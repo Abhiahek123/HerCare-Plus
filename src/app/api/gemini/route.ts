@@ -118,7 +118,7 @@ export async function POST(req: Request) {
     const cleanLocation = location ? sanitizeInput(location) : "India";
 
     // Check if Gemini API is available
-    if (!model || !process.env.GEMINI_API_KEY) {
+    if (!model) {
       console.log("⚠️ No API key: Using intelligent fallback responses");
       const fallbackResponse = getDevelopmentResponse(cleanSymptoms, cleanNickname);
       return NextResponse.json({
