@@ -1,0 +1,29 @@
+{
+  "name": "HerCare+ - Women's Health Companion",
+  "short_name": "HerCare+",
+  "description": "Private, AI-powered women's health platform for symptom checking, cycle tracking, and finding care.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FDF2F8",
+  "theme_color": "#EC4899",
+  "orientation": "portrait",
+  "categories": ["health", "medical", "lifestyle"],
+  "dir": "ltr",
+  "lang": "en-IN",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/og-image.png",
+      "sizes": "1200x630",
+      "type": "image/png",
+      "label": "HerCare+ Home Screen"
+    }
+  ]
+}
