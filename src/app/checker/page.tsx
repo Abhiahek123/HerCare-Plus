@@ -277,7 +277,7 @@ export default function SymptomChecker() {
           <div className="flex justify-start">
               <div className="bg-white border border-gray-100 p-4 rounded-3xl rounded-bl-none flex items-center gap-3 shadow-sm">
                 <Loader2 className="animate-spin text-pink-400" size={20} />
-                <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Analyzing symptoms...</span>
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">HerCare is thinking...</span>
               </div>
            </div>
         )}
