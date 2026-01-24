@@ -180,13 +180,13 @@ export default function SymptomChecker() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-[#FFF5F7] relative overflow-hidden font-nunito">
+    <div className="flex flex-col h-[100dvh] bg-[#FFF5F7] relative overflow-hidden font-nunito">
       {/* Optimized Background - Lightweight CSS Gradients */}
       <div className="absolute top-0 right-0 w-full h-[500px] bg-gradient-to-b from-pink-100/40 to-transparent pointer-events-none" />
       <div className="absolute bottom-0 left-0 w-full h-[300px] bg-gradient-to-t from-purple-100/40 to-transparent pointer-events-none" />
 
       {/* Header - Optimized Glassmorphism */}
-      <div className="pt-20 pb-4 px-6 bg-white/90 backdrop-blur-md border-b border-gray-100 flex justify-between items-center z-10 sticky top-0 shadow-sm">
+      <div className="pt-12 pb-4 px-6 bg-white/90 backdrop-blur-md border-b border-gray-100 flex justify-between items-center z-10 sticky top-0 shadow-sm">
         <div>
           <h1 className="text-2xl font-black text-gray-800 tracking-tight flex items-center gap-2">
             HerCare
@@ -362,13 +362,17 @@ export default function SymptomChecker() {
         )}
       </AnimatePresence>
 
-      <div className="p-4 bg-white/80 backdrop-blur-xl border-t border-white/60 pb-28">
-        <div className="bg-white p-2 rounded-[2rem] shadow-xl shadow-purple-900/5 border border-gray-100">
-          <div className="flex items-center gap-2">
+      {/* Floating Input Pill - Fixed above Nav */}
+      <div className="fixed bottom-[5.5rem] left-0 right-0 px-4 z-30 pointer-events-none">
+        <div className="max-w-md mx-auto pointer-events-auto">
+          <div className="bg-white/90 backdrop-blur-xl p-1.5 pl-2 rounded-[2.5rem] shadow-2xl shadow-purple-900/10 border border-white/60 flex items-center transition-all focus-within:shadow-pink-300/40 focus-within:scale-[1.01] focus-within:bg-white">
+            <div className="w-10 h-10 bg-pink-50 rounded-full flex items-center justify-center text-xl shrink-0 animate-bounce-slow">
+              🌸
+            </div>
             <input 
               type="text" 
-              className="flex-1 bg-transparent border-none outline-none px-4 py-3 text-gray-700 placeholder-gray-300 font-medium"
-              placeholder={isListening ? "Listening..." : "Type how you're feeling..."}
+              className="flex-1 bg-transparent border-none outline-none px-3 py-3 text-gray-700 placeholder-gray-400 font-bold text-sm"
+              placeholder={isListening ? "Listening..." : "Tell me how you feel..."}
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSend()}
@@ -392,7 +396,6 @@ export default function SymptomChecker() {
             >
               <Send size={20} />
             </button>
-          </div>
         </div>
         <div className="flex justify-center mt-3 gap-1">
            <span className="text-[10px] text-gray-300 uppercase tracking-widest font-bold">Private</span>
@@ -402,6 +405,7 @@ export default function SymptomChecker() {
            <span className="text-[10px] text-gray-300 uppercase tracking-widest font-bold">Secure</span>
         </div>
       </div>
+    </div>
 
       <BottomNav />
     </div>

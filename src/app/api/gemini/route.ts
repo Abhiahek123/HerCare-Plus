@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { triagePrompt, conversationPrompt, model } from "@/lib/gemini";
+import { unifiedPrompt, model } from "@/lib/gemini";
 
 // Rate limiting (in-memory, simple approach for MVP)
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
@@ -128,43 +128,32 @@ export async function POST(req: Request) {
       });
     }
 
-    // --- PASS 1: TRIAGE AGENT ---
+    // --- UNIFIED HIGH-SPEED AGENT ---
     try {
-      const pass1Prompt = triagePrompt(cleanAge, cleanSymptoms, cleanLanguage);
-      const pass1Result = await model.generateContent(pass1Prompt);
-      const triageJson = pass1Result.response.text();
-      const triageJsonClean = triageJson.replace(/```json/g, "").replace(/```/g, "").trim();
-
-      // Parse to ensure valid JSON
-      let parsedTriage;
+      const prompt = unifiedPrompt(cleanNickname, cleanAge, cleanLocation, cleanSymptoms, cleanLanguage);
+      const result = await model.generateContent(prompt);
+      let responseText = result.response.text();
+      
+      // Clean JSON (in case model outputs Markdown code blocks)
+      responseText = responseText.replace(/```json/g, "").replace(/```/g, "").trim();
+      
+      let data;
       try {
-        parsedTriage = JSON.parse(triageJsonClean);
+        data = JSON.parse(responseText);
       } catch (e) {
-        console.error("Pass 1 JSON parse error", e);
-        parsedTriage = { 
-          category: "general health", 
-          severity: "medium", 
-          repeat_risk: "medium", 
-          recommended_action: "consult a doctor soon" 
+        console.warn("JSON Parse Failed, using raw text", e);
+        // Fallback if AI returns plain text instead of JSON
+        data = { 
+            conversation: responseText.slice(0, 300), // Safety clip
+            show_doctor_choice: true, 
+            recommended_action: "Consult Doctor" 
         };
       }
 
-      // --- PASS 2: CONVERSATION AGENT ---
-      const pass2Prompt = conversationPrompt(
-        cleanNickname,
-        cleanLocation,
-        cleanSymptoms,
-        JSON.stringify(parsedTriage),
-        cleanLanguage
-      );
-
-      const pass2Result = await model.generateContent(pass2Prompt);
-      const conversationText = pass2Result.response.text().trim();
-
       return NextResponse.json({
-        conversation: conversationText,
-        show_doctor_choice: true,
-        reasoning: parsedTriage
+        conversation: data.conversation,
+        show_doctor_choice: data.show_doctor_choice,
+        reasoning: { action: data.recommended_action }
       });
 
     } catch (geminiError: any) {
