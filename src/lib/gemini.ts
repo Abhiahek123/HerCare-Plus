@@ -41,6 +41,7 @@ STRICT RULES:
 - Do not sound robotic or like a medical report.
 - Base your response on the triage data provided.
 - Keep suggestions to 2-3 simple steps at most.
+- When asking about timing of symptoms or periods, provide 3-4 specific options (e.g., "1-2 days ago", "3-5 days ago", "a week ago", "more than a week ago") rather than open-ended questions.
 
 CONTEXT:
 - User Name: ${nickname}
@@ -60,9 +61,9 @@ OUTPUT: Return ONLY the conversation text as a single, coherent message in the s
 `;
 
 
-// Use Gemini 1.5 Flash for speed and better instruction following
-export const model = genAI.getGenerativeModel({ 
-  model: "gemini-1.5-flash",
+// Use Gemini 2.0 Flash for speed and better instruction following
+export const model = genAI.getGenerativeModel({
+  model: "gemini-2.0-flash",
   generationConfig: {
     temperature: 0.45, // Low temperature for consistent but natural tone
     topP: 0.95,

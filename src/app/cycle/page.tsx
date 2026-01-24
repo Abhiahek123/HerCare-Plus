@@ -1,29 +1,24 @@
 "use client";
 
 import BottomNav from "@/components/BottomNav";
+import CycleAnalytics from "@/components/CycleAnalytics";
 import { 
   ChevronLeft, 
   ChevronRight, 
   Plus, 
   TrendingUp, 
   Droplets, 
-  Heart, 
-  AlertCircle, 
   Sparkles,
   Calendar as CalendarIcon,
   Info,
-  Clock
+  Clock,
+  Check
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useMemo } from "react";
 import { storage } from "@/lib/storage";
-
-type FlowType = "light" | "medium" | "heavy";
-type CycleEntry = {
-  date: string;
-  flow: FlowType;
-  symptoms: string[];
-};
+import { CyclePredictionEngine, DailyInsightGenerator } from "@/lib/cycleEngine";
+import type { CycleEntry, FlowType, MoodType } from "@/lib/cycleEngine";
 
 const SYMPTOMS = [
   "Cramps", "Headache", "Bloating", "Mood swings", 
@@ -31,18 +26,24 @@ const SYMPTOMS = [
 ];
 
 const PHASE_COLORS = {
-  Follicular: "from-blue-400 to-cyan-400",
-  Ovulation: "from-purple-400 to-pink-400",
-  Luteal: "from-orange-400 to-red-400",
-  Menstrual: "from-rose-500 to-pink-600",
+  Follicular: "from-blue-400 to-cyan-500 shadow-blue-200",
+  Ovulation: "from-purple-400 to-fuchsia-500 shadow-purple-200",
+  Luteal: "from-amber-400 to-orange-500 shadow-orange-200",
+  Menstrual: "from-rose-500 to-pink-600 shadow-rose-200",
   Unknown: "from-gray-400 to-gray-500"
 };
 
 export default function CyclePage() {
   const [entries, setEntries] = useState<CycleEntry[]>([]);
   const [showLogModal, setShowLogModal] = useState(false);
+  const [showAnalytics, setShowAnalytics] = useState(false);
+  
+  // Logging State
   const [selectedFlow, setSelectedFlow] = useState<FlowType | "">("");
   const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([]);
+  const [selectedMood, setSelectedMood] = useState<string>("");
+  const [notes, setNotes] = useState<string>("");
+
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [nickname, setNickname] = useState("friend");
   const [age, setAge] = useState<number | null>(null);
@@ -59,18 +60,29 @@ export default function CyclePage() {
   const handleSaveLog = async () => {
     if (!selectedFlow) return;
     
+    // Convert mood to lower case for consistency with MoodType
+    const validMood = selectedMood ? selectedMood.toLowerCase() as MoodType : undefined;
+    
+    // Create new entry
     const newEntry: CycleEntry = {
+      id: Date.now().toString(),
       date: new Date().toISOString().split('T')[0],
       flow: selectedFlow,
-      symptoms: selectedSymptoms
+      symptoms: selectedSymptoms,
+      mood: validMood,
+      notes: notes
     };
 
     await storage.addCycleEntry(newEntry);
     const updated = await storage.getCycleEntries();
     setEntries(updated || []);
     setShowLogModal(false);
+    
+    // Reset form
     setSelectedFlow("");
     setSelectedSymptoms([]);
+    setSelectedMood("");
+    setNotes("");
   };
 
   const toggleSymptom = (symptom: string) => {
@@ -81,34 +93,46 @@ export default function CyclePage() {
     );
   };
 
-  // Calculate predictions
+  // Intelligent Predictions using the Cycle Engine
   const stats = useMemo(() => {
-    if (entries.length === 0) return { daysUntilPeriod: null, currentPhase: "Unknown", nextDate: null };
+    if (entries.length === 0) {
+      return { 
+        daysUntilPeriod: null, 
+        currentPhase: "Unknown", 
+        nextDate: null,
+        confidenceScore: 0,
+        dailyInsight: "Start logging your cycle to unlock personalized insights! 📊",
+        avgCycleLength: 28
+      };
+    }
     
-    const lastEntry = entries[entries.length - 1];
-    const lastDate = new Date(lastEntry.date);
-    const avgCycleLength = 28;
+    // Initialize prediction engine - generic type satisfies the requirement if matching structure
+    const engine = new CyclePredictionEngine(entries);
+    const metrics = engine.calculateMetrics();
     
-    const nextDate = new Date(lastDate.getTime() + avgCycleLength * 24 * 60 * 60 * 1000);
-    const today = new Date();
-    today.setHours(0,0,0,0);
-    
-    const diffTime = nextDate.getTime() - today.getTime();
-    const daysUntil = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    let phase = "Follicular";
-    if (daysUntil <= 0) phase = "Menstrual";
-    else if (daysUntil <= 7) phase = "Luteal";
-    else if (daysUntil <= 14) phase = "Ovulation";
+    // Generate daily insight
+    const recentSymptoms = entries.slice(-3).flatMap(e => e.symptoms || []);
+    const insightGenerator = new DailyInsightGenerator(
+      metrics.currentPhase,
+      recentSymptoms,
+      age || undefined
+    );
+    const dailyInsight = insightGenerator.generate();
     
     return { 
-      daysUntilPeriod: Math.max(0, daysUntil), 
-      currentPhase: phase,
-      nextDate: nextDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      daysUntilPeriod: metrics.daysUntilNextPeriod, 
+      currentPhase: metrics.currentPhase,
+      nextDate: new Date(metrics.predictedNextPeriod).toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric' 
+      }),
+      confidenceScore: metrics.confidenceScore,
+      dailyInsight,
+      avgCycleLength: metrics.averageCycleLength,
     };
-  }, [entries]);
+  }, [entries, age]);
 
-  const { daysUntilPeriod, currentPhase, nextDate } = stats;
+  const { daysUntilPeriod, currentPhase, nextDate, confidenceScore, dailyInsight } = stats;
 
   // Calendar logic
   const monthName = currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
@@ -155,7 +179,7 @@ export default function CyclePage() {
            
            <div className="flex justify-between items-start mb-6">
               <div>
-                <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest text-white bg-gradient-to-r ${PHASE_COLORS[currentPhase as keyof typeof PHASE_COLORS]}`}>
+                <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest text-white shadow-lg bg-gradient-to-r ${PHASE_COLORS[currentPhase as keyof typeof PHASE_COLORS]}`}>
                   {currentPhase} Phase
                 </span>
               </div>
@@ -167,8 +191,8 @@ export default function CyclePage() {
 
            <div className="flex items-center gap-6">
               <div className="relative">
-                <div className={`w-24 h-24 rounded-full border-4 border-gray-50 flex items-center justify-center bg-gradient-to-br ${PHASE_COLORS[currentPhase as keyof typeof PHASE_COLORS]} shadow-lg shadow-pink-200/50`}>
-                  <span className="text-3xl font-black text-white">
+                <div className={`w-24 h-24 rounded-full border-4 border-white flex items-center justify-center bg-gradient-to-br from-pink-400 to-rose-400 shadow-xl shadow-pink-300/50`}>
+                  <span className="text-3xl font-black text-white drop-shadow-sm">
                     {daysUntilPeriod !== null ? daysUntilPeriod : "--"}
                   </span>
                 </div>
@@ -176,12 +200,20 @@ export default function CyclePage() {
                 <motion.div 
                   animate={{ scale: [1, 1.1, 1] }} 
                   transition={{ repeat: Infinity, duration: 3 }}
-                  className="absolute inset-[-8px] rounded-full border border-pink-100 opacity-50"
+                  className="absolute inset-[-8px] rounded-full border-2 border-pink-200 opacity-50"
                 ></motion.div>
               </div>
               <div>
-                 <h2 className="text-xl font-black text-gray-800">Days to go</h2>
+                 <h2 className="text-xl font-black bg-gradient-to-r from-pink-500 to-rose-500 bg-clip-text text-transparent">Days to go</h2>
                  <p className="text-sm font-medium text-gray-500 leading-tight">until your next cycle begins</p>
+                 {confidenceScore > 0 && (
+                   <div className="flex items-center gap-1 mt-2">
+                     <div className="h-1.5 w-16 bg-gray-100 rounded-full overflow-hidden">
+                       <div className="h-full bg-gradient-to-r from-green-400 to-emerald-400" style={{ width: `${confidenceScore}%` }}></div>
+                     </div>
+                     <span className="text-[10px] text-gray-400 font-bold">{confidenceScore}% confident</span>
+                   </div>
+                 )}
               </div>
            </div>
         </motion.div>
@@ -190,57 +222,50 @@ export default function CyclePage() {
         <div className="grid grid-cols-2 gap-4">
            <button 
             onClick={() => setShowLogModal(true)}
-            className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-lg shadow-purple-900/5 flex flex-col items-center gap-3 transition-transform active:scale-95"
+            className="group bg-gradient-to-br from-pink-50 to-rose-50 p-6 rounded-[2rem] border border-pink-100 shadow-lg shadow-pink-200/50 hover:shadow-xl hover:shadow-pink-300/50 flex flex-col items-center gap-3 transition-all hover:scale-105 active:scale-95"
            >
-              <div className="w-12 h-12 bg-pink-50 rounded-2xl flex items-center justify-center text-pink-500">
-                <Plus size={24} />
+              <div className="w-14 h-14 bg-gradient-to-br from-pink-500 to-rose-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-pink-300/50 group-hover:shadow-xl transition-all">
+                <Plus size={26} strokeWidth={2.5} />
               </div>
-              <span className="text-xs font-black text-gray-700 uppercase tracking-widest">Log Period</span>
+              <span className="text-xs font-black bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent uppercase tracking-widest">Log Period</span>
            </button>
            <button 
-            className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-lg shadow-purple-900/5 flex flex-col items-center gap-3 transition-transform active:scale-95"
+            onClick={() => setShowAnalytics(true)}
+            className="group bg-gradient-to-br from-purple-50 to-indigo-50 p-6 rounded-[2rem] border border-purple-100 shadow-lg shadow-purple-200/50 hover:shadow-xl hover:shadow-purple-300/50 flex flex-col items-center gap-3 transition-all hover:scale-105 active:scale-95"
            >
-              <div className="w-12 h-12 bg-purple-50 rounded-2xl flex items-center justify-center text-purple-500">
-                <TrendingUp size={24} />
+              <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-purple-300/50 group-hover:shadow-xl transition-all">
+                <TrendingUp size={26} strokeWidth={2.5} />
               </div>
-              <span className="text-xs font-black text-gray-700 uppercase tracking-widest">Analytics</span>
+              <span className="text-xs font-black bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent uppercase tracking-widest">Analytics</span>
            </button>
         </div>
 
-        {/* Insight Card - Conversational Tone */}
+        {/* Insight Card */}
         <motion.div 
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-[2.5rem] p-6 text-white shadow-2xl shadow-purple-300 relative overflow-hidden"
+          className="bg-gradient-to-br from-pink-50 to-purple-50 rounded-[2.5rem] p-6 border border-pink-100 shadow-lg shadow-pink-100/50 relative overflow-hidden"
         >
-          <div className="absolute right-[-5%] top-[-10%] opacity-10">
-            <Sparkles size={100} />
+          <div className="absolute right-[-5%] top-[-10%] opacity-5">
+            <Sparkles size={100} className="text-pink-300" />
           </div>
           
           <div className="flex gap-4 items-start">
-             <div className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center shrink-0">
-               <Info size={20} />
+             <div className="w-10 h-10 bg-pink-100 rounded-full flex items-center justify-center shrink-0">
+               <Info size={20} className="text-pink-500" />
              </div>
              <div>
-                <h3 className="font-black text-sm uppercase tracking-widest mb-2 opacity-80">
+                <h3 className="font-bold text-xs uppercase tracking-wider mb-2 text-pink-500">
                   {age && age < 18 ? "Teen Health Tip" : age && age > 45 ? "Perimenopause Insight" : "Daily Insight"}
                 </h3>
-                <p className="text-sm font-medium leading-relaxed">
-                  {entries.length === 0 
-                    ? age && age < 18 
-                      ? "Tracking your cycle helps you understand your body as it changes. It's perfectly okay for it to be irregular right now! 🌸"
-                      : "Logging your period helps predict your next cycle and understand your moods better. 💜"
-                    : daysUntilPeriod && daysUntilPeriod < 7 
-                    ? age && age < 18
-                      ? "Your period is starting soon. Make sure you have your supplies ready for school! 🎒🌸"
-                      : "Your period is approaching. Self-care time! Stock up on pads, dark chocolate, and cozy vibes. 🍫✨"
-                    : "You're in your productive phase! Great time for big tasks and social activities. 🚀"}
+                <p className="text-sm font-medium leading-relaxed text-gray-700">
+                  {dailyInsight}
                 </p>
              </div>
           </div>
         </motion.div>
 
-        {/* Calendar - Clean & Modern */}
+        {/* Calendar */}
         <div className="bg-white rounded-[2.5rem] p-6 shadow-xl shadow-purple-900/5 border border-gray-50">
           <div className="flex justify-between items-center mb-6 px-2">
             <h3 className="text-lg font-black text-gray-800">{monthName}</h3>
@@ -273,16 +298,16 @@ export default function CyclePage() {
                 <div key={day} className="flex flex-col items-center justify-center h-12 relative group cursor-pointer">
                   <div 
                     className={`
-                      w-10 h-10 flex items-center justify-center rounded-2xl text-sm font-bold transition-all
-                      ${entry ? 'bg-gradient-to-br from-pink-500 to-rose-500 text-white shadow-lg shadow-pink-200 scale-105' : ''}
-                      ${isToday && !entry ? 'bg-purple-100 text-purple-600' : ''}
-                      ${!entry && !isToday ? 'text-gray-600 hover:bg-gray-50' : ''}
+                      w-10 h-10 flex items-center justify-center rounded-2xl text-sm font-bold transition-all duration-300
+                      ${entry ? 'bg-gradient-to-br from-pink-500 via-pink-500 to-rose-500 text-white shadow-xl shadow-pink-300/60 scale-110 hover:scale-115' : ''}
+                      ${isToday && !entry ? 'bg-gradient-to-br from-purple-100 to-pink-100 text-purple-700 ring-2 ring-purple-300 ring-offset-2' : ''}
+                      ${!entry && !isToday ? 'text-gray-600 hover:bg-gradient-to-br hover:from-gray-50 hover:to-gray-100 hover:scale-110' : ''}
                     `}
                   >
                     {day}
                   </div>
                   {entry && entry.flow && (
-                    <div className="absolute bottom-1 w-1 h-1 bg-white rounded-full"></div>
+                    <div className="absolute bottom-0.5 w-1.5 h-1.5 bg-white rounded-full shadow-sm"></div>
                   )}
                 </div>
               );
@@ -302,7 +327,7 @@ export default function CyclePage() {
           </div>
         </div>
 
-        {/* Quick Tips - For easy understanding */}
+        {/* Quick Tips */}
         <div className="space-y-4">
           <h3 className="text-lg font-black text-gray-800 px-2 tracking-tight">Quick Self-Care</h3>
           <div className="grid grid-cols-2 gap-4">
@@ -323,7 +348,7 @@ export default function CyclePage() {
           </div>
         </div>
 
-        {/* Recent Symptoms - If any */}
+        {/* Recent Symptoms */}
         {entries.some(e => e.symptoms?.length > 0) && (
           <div className="space-y-4">
              <div className="flex items-center justify-between px-2">
@@ -352,6 +377,20 @@ export default function CyclePage() {
         )}
       </main>
 
+      {/* Analytics Modal */}
+      <AnimatePresence>
+        {showAnalytics && (
+          <CycleAnalytics 
+            entries={entries} 
+            onClose={() => setShowAnalytics(false)}
+            onStartTracking={() => {
+              setShowAnalytics(false);
+              setShowLogModal(true);
+            }} 
+          />
+        )}
+      </AnimatePresence>
+
       {/* Log Modal - Premium Feel */}
       <AnimatePresence>
         {showLogModal && (
@@ -360,7 +399,7 @@ export default function CyclePage() {
               initial={{ opacity: 0 }} 
               animate={{ opacity: 1 }} 
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-gray-900/40 backdrop-blur-md z-50"
+              className="fixed inset-0 bg-gray-900/40 backdrop-blur-md z-[60]"
               onClick={() => setShowLogModal(false)}
             />
             <motion.div 
@@ -368,34 +407,63 @@ export default function CyclePage() {
               animate={{ y: 0 }} 
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 30, stiffness: 300 }}
-              className="fixed bottom-0 left-0 right-0 bg-white rounded-t-[3rem] p-8 z-50 max-w-md mx-auto shadow-2xl"
+              className="fixed bottom-0 left-0 right-0 bg-white rounded-t-[3rem] p-8 z-[60] max-w-md mx-auto shadow-2xl max-h-[90vh] overflow-y-auto"
             >
-              <div className="w-12 h-1.5 bg-gray-100 rounded-full mx-auto mb-8"></div>
+              <div className="w-12 h-1.5 bg-gray-100 rounded-full mx-auto mb-6"></div>
               
               <h3 className="text-3xl font-black text-gray-800 mb-2">How's your flow?</h3>
-              <p className="text-sm font-medium text-gray-400 mb-8 flex items-center gap-2">
+              <p className="text-sm font-medium text-gray-400 mb-6 flex items-center gap-2">
                 <CalendarIcon size={14} />
                 {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
               </p>
               
-              <div className="space-y-8">
+              <div className="space-y-6">
                 {/* Flow Level */}
                 <div>
-                  <div className="flex gap-4">
+                  <div className="flex gap-3">
                     {(['light', 'medium', 'heavy'] as FlowType[]).map((flow) => (
                       <button
                         key={flow}
                         onClick={() => setSelectedFlow(flow)}
                         className={`
-                          flex-1 py-6 rounded-3xl border-2 transition-all flex flex-col items-center gap-2
+                          flex-1 py-5 rounded-3xl border-2 transition-all flex flex-col items-center gap-2.5 relative overflow-hidden
                           ${selectedFlow === flow 
-                            ? 'bg-gradient-to-br from-pink-500 to-rose-500 border-pink-500 text-white shadow-xl shadow-pink-200' 
-                            : 'bg-gray-50 border-transparent text-gray-400 hover:bg-gray-100'
+                            ? 'bg-gradient-to-br from-pink-500 via-pink-500 to-rose-500 border-pink-400 text-white shadow-2xl shadow-pink-300/60 scale-105' 
+                            : 'bg-white border-gray-200 text-gray-400 hover:border-pink-200 hover:bg-pink-50/50 hover:scale-102'
                           }
                         `}
                       >
-                        <Droplets size={24} fill={selectedFlow === flow ? "white" : "none"} />
-                        <span className="text-[10px] font-black uppercase tracking-widest">{flow}</span>
+                        {selectedFlow === flow && (
+                          <div className="absolute inset-0 bg-gradient-to-t from-white/10 to-transparent"></div>
+                        )}
+                        <Droplets size={28} fill={selectedFlow === flow ? "white" : "none"} strokeWidth={2} className="relative z-10" />
+                        <span className="text-xs font-black uppercase tracking-wider relative z-10">{flow}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Mood Picker */}
+                <div>
+                  <h4 className="text-xs font-black text-gray-400 uppercase tracking-[0.15em] mb-4">How are you feeling?</h4>
+                  <div className="flex justify-between bg-gradient-to-br from-gray-50 to-gray-100/50 p-5 rounded-3xl border border-gray-100">
+                    {[
+                      { emoji: "⚡", label: "Energetic" },
+                      { emoji: "😊", label: "Happy" },
+                      { emoji: "😐", label: "Neutral" },
+                      { emoji: "😢", label: "Sad" },
+                      { emoji: "😡", label: "Irritable" },
+                    ].map((m) => (
+                      <button
+                        key={m.label}
+                        onClick={() => setSelectedMood(m.label)}
+                        className={`flex flex-col items-center gap-1.5 transition-all duration-300 ${
+                          selectedMood === m.label 
+                            ? 'scale-125 drop-shadow-lg' 
+                            : 'opacity-50 hover:opacity-100 hover:scale-110'
+                        }`}
+                      >
+                        <span className="text-3xl">{m.emoji}</span>
                       </button>
                     ))}
                   </div>
@@ -403,17 +471,17 @@ export default function CyclePage() {
 
                 {/* Symptoms */}
                 <div>
-                  <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4">Any Symptoms?</h4>
-                  <div className="flex flex-wrap gap-2">
+                  <h4 className="text-xs font-black text-gray-400 uppercase tracking-[0.15em] mb-4">Any symptoms?</h4>
+                  <div className="flex flex-wrap gap-2.5">
                     {SYMPTOMS.map((symptom) => (
                       <button
                         key={symptom}
                         onClick={() => toggleSymptom(symptom)}
                         className={`
-                          px-5 py-2.5 rounded-full text-xs font-bold transition-all border-2
+                          px-4 py-2.5 rounded-full text-xs font-bold transition-all duration-300 border-2
                           ${selectedSymptoms.includes(symptom)
-                            ? 'bg-purple-100 text-purple-600 border-purple-200 shadow-sm'
-                            : 'bg-gray-50 text-gray-400 border-transparent hover:bg-gray-100'
+                            ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white border-purple-400 shadow-lg shadow-purple-300/50 scale-105'
+                            : 'bg-white text-gray-500 border-gray-200 hover:border-purple-200 hover:bg-purple-50/50 hover:text-purple-600'
                           }
                         `}
                       >
@@ -423,13 +491,28 @@ export default function CyclePage() {
                   </div>
                 </div>
 
+                {/* Notes Input */}
+                <div>
+                   <h4 className="text-xs font-black text-gray-400 uppercase tracking-[0.15em] mb-4">Private notes (optional)</h4>
+                   <textarea
+                     value={notes}
+                     onChange={(e) => setNotes(e.target.value)}
+                     placeholder="How are you feeling today? Any thoughts to remember..."
+                     className="w-full bg-gradient-to-br from-gray-50 to-gray-100/50 border border-gray-200 rounded-3xl p-5 text-sm font-medium text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-300 focus:border-transparent resize-none h-24 transition-all"
+                   />
+                </div>
+
                 {/* Confirm Button */}
                 <button 
                   onClick={handleSaveLog}
-                  disabled={!selectedFlow}
-                  className="w-full bg-gradient-to-r from-pink-500 via-[#FF75A0] to-purple-600 text-white py-5 rounded-3xl font-black uppercase tracking-widest text-sm shadow-2xl shadow-pink-200 disabled:opacity-30 transition-all active:scale-95"
+                  disabled={!selectedFlow && !selectedMood && selectedSymptoms.length === 0}
+                  className="group relative w-full bg-gradient-to-r from-pink-500 via-pink-600 to-rose-500 text-white py-6 rounded-3xl font-black uppercase tracking-widest text-sm shadow-2xl shadow-pink-300/60 disabled:opacity-30 disabled:shadow-none transition-all hover:shadow-3xl hover:shadow-pink-400/70 active:scale-98 overflow-hidden"
                 >
-                  Confirm Log
+                  <div className="absolute inset-0 bg-gradient-to-t from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  <span className="relative z-10 flex items-center justify-center gap-2">
+                    <Check size={20} strokeWidth={3} />
+                    Save Entry
+                  </span>
                 </button>
               </div>
             </motion.div>

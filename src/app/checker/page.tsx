@@ -2,7 +2,7 @@
 
 import BottomNav from "@/components/BottomNav";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
-import { Mic, Send, X, Heart, Loader2 } from "lucide-react";
+import { Mic, Send, X, Heart, Loader2, Stethoscope } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
@@ -10,8 +10,8 @@ import Link from "next/link";
 type Language = 'en' | 'hi' | 'ta' | 'te' | 'bn' | 'mr';
 
 const LANGUAGES: Record<Language, { name: string; label: string; greeting: string }> = {
-  en: { name: 'English', label: 'English', greeting: "What's been bothering you lately?" },
-  hi: { name: 'Hindi', label: 'हिंदी', greeting: 'बताइए क्या तकलीफ है?' },
+  en: { name: 'English', label: 'English', greeting: "How are you feeling today?" },
+  hi: { name: 'Hindi', label: 'हिंदी', greeting: 'आज आप कैसा महसूस कर रही हैं?' },
   ta: { name: 'Tamil', label: 'தமிழ்', greeting: 'என்ன பிரச்சனை?' },
   te: { name: 'Telugu', label: 'తెలుగు', greeting: 'ఏమి సమస్య?' },
   bn: { name: 'Bengali', label: 'বাংলা', greeting: 'কী समस्या?' },
@@ -107,13 +107,22 @@ export default function SymptomChecker() {
     }
   }, [transcript, setTranscript]);
 
+  // Manual scroll helper
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    }, 100);
   };
 
+  const isInitialLoad = useRef(true);
+
+  // Only scroll automatically for the very first welcome message
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, loading]);
+    if (isInitialLoad.current && messages.length > 0) {
+      scrollToBottom();
+      isInitialLoad.current = false;
+    }
+  }, [messages.length]); 
 
   const handleSend = async (text?: string) => {
     const messageToSend = typeof text === 'string' ? text : inputText;
@@ -129,6 +138,9 @@ export default function SymptomChecker() {
     setInputText("");
     setLoading(true);
     setShowSuggestions(false);
+    
+    // Scroll to bottom when user sends
+    scrollToBottom();
 
     try {
       const response = await fetch('/api/gemini', {
@@ -150,6 +162,9 @@ export default function SymptomChecker() {
         sender: 'ai',
         analysis: data
       }]);
+      
+      // Scroll to bottom when AI responds
+      scrollToBottom();
 
     } catch (error) {
       setMessages(prev => [...prev, {
@@ -157,31 +172,81 @@ export default function SymptomChecker() {
         sender: 'ai',
         text: "I am having trouble connecting right now. But you are not alone - please try again in a moment, or reach out to a trusted doctor."
       }]);
+      // Scroll to bottom on error message too
+      scrollToBottom();
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gradient-to-b from-pink-50 to-white pt-16 pb-24">
-      <div className="px-6 py-4 bg-white/90 backdrop-blur-md border-b border-pink-50 flex justify-between items-center shadow-sm">
+    <div className="flex flex-col h-screen bg-gradient-to-b from-[#FFF5F7] via-white to-purple-50 relative overflow-hidden font-nunito">
+      {/* Innovative Animated Background - Floating Orbs */}
+      <motion.div 
+        animate={{ 
+          x: [0, 50, -30, 0], 
+          y: [0, -40, 20, 0],
+          scale: [1, 1.1, 0.9, 1]
+        }}
+        transition={{ 
+          duration: 20, 
+          repeat: Infinity, 
+          repeatType: "reverse",
+          ease: "easeInOut"
+        }}
+        className="fixed top-[-10%] right-[-10%] w-[600px] h-[600px] bg-gradient-to-br from-pink-200/40 to-rose-100/30 rounded-full blur-[100px] pointer-events-none"
+      />
+      <motion.div 
+        animate={{ 
+          x: [0, -40, 30, 0], 
+          y: [0, 50, -30, 0],
+          scale: [1, 0.9, 1.1, 1]
+        }}
+        transition={{ 
+          duration: 25, 
+          repeat: Infinity, 
+          repeatType: "reverse",
+          ease: "easeInOut",
+          delay: 2
+        }}
+        className="fixed bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-gradient-to-tr from-purple-200/40 to-indigo-100/30 rounded-full blur-[100px] pointer-events-none"
+      />
+
+      {/* Header - Premium Glassmorphism */}
+      <div className="pt-20 pb-4 px-6 bg-white/70 backdrop-blur-xl border-b border-white/50 flex justify-between items-center z-10 sticky top-0 shadow-sm shadow-purple-900/5">
         <div>
-          <h1 className="text-lg font-bold text-gray-800">Private Chat</h1>
-          <div className="flex items-center gap-2 mt-0.5">
-            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-            <p className="text-xs text-green-600 font-medium">Listening with care</p>
+          <h1 className="text-2xl font-black text-gray-800 tracking-tight flex items-center gap-2">
+            HerCare
+            <span className="text-pink-500 text-3xl leading-none">⁺</span>
+          </h1>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+            </span>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Private & Secure Chat</p>
           </div>
         </div>
         
-        <select 
-          value={selectedLang}
-          onChange={(e) => setSelectedLang(e.target.value as Language)}
-          className="bg-gradient-to-r from-pink-50 to-purple-50 border border-pink-100 text-gray-700 text-sm rounded-full px-3 py-2 outline-none focus:border-pink-300 font-medium"
-        >
-          {Object.entries(LANGUAGES).map(([code, lang]) => (
-            <option key={code} value={code}>{lang.label}</option>
-          ))}
-        </select>
+        {/* Enhanced Language Selector */}
+        <div className="relative group">
+          <select 
+            value={selectedLang}
+            onChange={(e) => setSelectedLang(e.target.value as Language)}
+            className="bg-white/80 backdrop-blur-md border border-gray-200 text-gray-700 text-xs font-bold rounded-2xl pl-4 pr-8 py-2.5 outline-none focus:border-pink-300 focus:ring-2 focus:ring-pink-100 transition-all appearance-none cursor-pointer hover:bg-white shadow-sm hover:shadow-md"
+          >
+            {Object.entries(LANGUAGES).map(([code, lang]) => (
+              <option key={code} value={code} className="text-base py-1">
+                {lang.label}
+              </option>
+            ))}
+          </select>
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400 group-hover:text-pink-500 transition-colors">
+            <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
@@ -195,35 +260,35 @@ export default function SymptomChecker() {
               className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               {msg.text ? (
-                <div className={`max-w-[85%] p-4 rounded-3xl text-sm leading-relaxed shadow-sm ${
+                <div className={`max-w-[85%] p-5 rounded-3xl text-sm font-medium leading-relaxed shadow-sm ${
                   msg.sender === 'user' 
-                    ? 'bg-gradient-to-br from-pink-400 to-rose-400 text-white rounded-br-md' 
-                    : 'bg-white text-gray-800 border border-pink-50 rounded-bl-md'
+                    ? 'bg-gradient-to-br from-pink-500 to-rose-500 text-white rounded-br-none shadow-pink-200' 
+                    : 'bg-white text-gray-600 border border-gray-100 rounded-bl-none shadow-gray-100'
                 }`}>
                   {msg.text}
                 </div>
               ) : msg.analysis ? (
-                <div className="max-w-[95%] w-full bg-white rounded-3xl rounded-bl-md border border-pink-100 shadow-md overflow-hidden">
+                <div className="max-w-[95%] w-full bg-white rounded-[2rem] rounded-bl-none border border-white shadow-xl shadow-purple-900/5 overflow-hidden">
                   <div className="p-6">
-                    <p className="text-gray-800 text-sm leading-7 whitespace-pre-wrap">
+                    <p className="text-gray-600 text-sm leading-7 font-medium">
                       <Heart size={16} className="inline mr-2 text-pink-500 mb-0.5" fill="currentColor" />
                       {msg.analysis.conversation}
                     </p>
 
                     {msg.analysis.show_doctor_choice && (
                       <div className="mt-6 pt-4 border-t border-gray-50 animate-fade-in">
-                        <p className="text-xs text-center text-gray-500 mb-3">Would you like me to help you find a women's health doctor nearby?</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-center text-gray-400 mb-4">Recommended Next Step</p>
                         <div className="flex gap-3 justify-center">
                           <button 
                             onClick={() => setIsFindingDoctor(true)}
-                            className="bg-pink-500 text-white px-5 py-2 rounded-full text-sm font-bold shadow-md hover:bg-pink-600 transition-all"
+                            className="bg-gradient-to-r from-pink-500 to-rose-500 text-white px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-wide shadow-lg shadow-pink-200 hover:shadow-xl hover:scale-105 transition-all"
                           >
-                            Yes, please
+                            Find a Doctor
                           </button>
                           <button 
-                            className="bg-gray-100 text-gray-600 px-5 py-2 rounded-full text-sm font-medium hover:bg-gray-200 transition-all"
+                            className="bg-gray-50 text-gray-500 px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-wide hover:bg-gray-100 transition-all"
                           >
-                            Not right now
+                            Maybe Later
                           </button>
                         </div>
                       </div>
@@ -237,10 +302,10 @@ export default function SymptomChecker() {
 
         {loading && (
           <div className="flex justify-start">
-             <div className="bg-white border border-pink-100 p-4 rounded-3xl rounded-bl-md flex items-center gap-3 shadow-sm">
-               <Loader2 className="animate-spin text-pink-400" size={20} />
-               <span className="text-sm text-gray-600">Reading your message...</span>
-             </div>
+              <div className="bg-white border border-gray-100 p-4 rounded-3xl rounded-bl-none flex items-center gap-3 shadow-sm">
+                <Loader2 className="animate-spin text-pink-400" size={20} />
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Analyzing symptoms...</span>
+              </div>
            </div>
         )}
         <div ref={messagesEndRef} />
@@ -257,9 +322,10 @@ export default function SymptomChecker() {
               <button
                 key={i}
                 onClick={() => handleSend(suggestion.replace("💭 ", ""))}
-                className="bg-white/80 backdrop-blur-sm border border-pink-100 text-pink-600 px-4 py-2 rounded-full text-xs font-bold shadow-sm hover:bg-pink-50 transition-all"
+                className="bg-white border border-gray-50 text-gray-600 px-5 py-3 rounded-2xl text-xs font-bold shadow-sm hover:shadow-md hover:scale-105 transition-all flex items-center gap-2"
               >
-                {suggestion}
+                <Stethoscope size={16} className="text-pink-500" />
+                {suggestion.replace("💭 ", "")}
               </button>
             ))}
           </motion.div>
@@ -323,13 +389,13 @@ export default function SymptomChecker() {
         )}
       </AnimatePresence>
 
-      <div className="p-4 bg-white border-t border-gray-50 pb-28">
-        <div className="bg-gradient-to-r from-pink-50 to-purple-50 p-1 rounded-full shadow-md">
-          <div className="flex items-center gap-2 bg-white p-2 rounded-full">
+      <div className="p-4 bg-white/80 backdrop-blur-xl border-t border-white/60 pb-28">
+        <div className="bg-white p-2 rounded-[2rem] shadow-xl shadow-purple-900/5 border border-gray-100">
+          <div className="flex items-center gap-2">
             <input 
               type="text" 
-              className="flex-1 bg-transparent border-none outline-none px-4 text-gray-700 placeholder-gray-400"
-              placeholder={isListening ? "I am listening..." : LANGUAGES[selectedLang].greeting}
+              className="flex-1 bg-transparent border-none outline-none px-4 py-3 text-gray-700 placeholder-gray-300 font-medium"
+              placeholder={isListening ? "Listening..." : "Type how you're feeling..."}
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSend()}
@@ -337,10 +403,10 @@ export default function SymptomChecker() {
             
             <button 
               onClick={isListening ? stopListening : startListening}
-              className={`p-3 rounded-full transition-all ${
+              className={`p-3 rounded-2xl transition-all ${
                 isListening 
-                  ? 'bg-red-500 text-white animate-pulse shadow-lg' 
-                  : 'bg-gradient-to-r from-pink-100 to-purple-100 text-pink-600 hover:from-pink-200 hover:to-purple-200'
+                  ? 'bg-red-50 text-red-500 animate-pulse' 
+                  : 'bg-gray-50 text-gray-400 hover:bg-gray-100'
               }`}
             >
               {isListening ? <X size={20} /> : <Mic size={20} />}
@@ -349,15 +415,19 @@ export default function SymptomChecker() {
             <button 
               onClick={() => handleSend()}
               disabled={!inputText.trim()}
-              className="p-3 bg-gradient-to-r from-pink-500 to-rose-400 text-white rounded-full hover:from-pink-600 hover:to-rose-500 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-lg"
+              className="p-3 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-2xl shadow-lg shadow-pink-200 hover:shadow-xl hover:scale-105 disabled:opacity-30 disabled:cursor-not-allowed disabled:shadow-none disabled:scale-100 transition-all"
             >
               <Send size={20} />
             </button>
           </div>
         </div>
-        <p className="text-center text-xs text-gray-400 mt-2">
-          Everything you say here is private 🔒
-        </p>
+        <div className="flex justify-center mt-3 gap-1">
+           <span className="text-[10px] text-gray-300 uppercase tracking-widest font-bold">Private</span>
+           <span className="text-[10px] text-gray-300"> • </span>
+           <span className="text-[10px] text-gray-300 uppercase tracking-widest font-bold">Encrypted</span>
+           <span className="text-[10px] text-gray-300"> • </span>
+           <span className="text-[10px] text-gray-300 uppercase tracking-widest font-bold">Secure</span>
+        </div>
       </div>
 
       <BottomNav />

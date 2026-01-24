@@ -10,9 +10,9 @@ export default function AboutPage() {
   const [showContact, setShowContact] = useState(false);
 
   const socialLinks = [
-    { icon: Linkedin, label: "Open LinkedIn", url: "https://linkedin.com/in/mohitraj", color: "#0A66C2" },
+    { icon: Linkedin, label: "Open LinkedIn", url: "https://linkedin.com/in/mohitraj8503", color: "#0A66C2" },
     { icon: Github, label: "View GitHub", url: "https://github.com/mohitraj8503", color: "#24292e" },
-    { icon: Instagram, label: "Open Instagram", url: "https://instagram.com/mohitraj", color: "#E4405F" },
+    { icon: Instagram, label: "Open Instagram", url: "https://instagram.com/pmenthuse", color: "#E4405F" },
     { icon: Mail, label: "Contact me", onClick: () => setShowContact(true), color: "#EA4335" },
   ];
 

@@ -31,16 +31,18 @@ export default function BottomNav() {
                 {isActive && (
                   <motion.div
                     layoutId="nav-pill"
-                    className="absolute inset-0 bg-gradient-to-tr from-pink-100 to-purple-50 rounded-2xl"
+                    className="absolute inset-0 bg-gradient-to-tr from-pink-100 via-pink-50 to-purple-50 rounded-2xl shadow-inner shadow-white/50"
                     transition={{ type: "spring", stiffness: 350, damping: 25 }}
-                  />
+                  >
+                    <div className="absolute inset-0 bg-pink-400/10 blur-md rounded-2xl"></div>
+                  </motion.div>
                 )}
                 <Icon 
                   size={24} 
-                  className={`relative z-10 transition-colors duration-300 ${isActive ? 'text-pink-600' : 'text-gray-400'}`}
+                  className={`relative z-10 transition-colors duration-300 ${isActive ? 'text-pink-600 drop-shadow-sm' : 'text-gray-400 group-hover:text-gray-600'}`}
                   strokeWidth={isActive ? 2.5 : 2}
                   fill={isActive ? "currentColor" : "none"}
-                  fillOpacity={isActive ? 0.1 : 0}
+                  fillOpacity={isActive ? 0.15 : 0}
                 />
               </motion.div>
             </Link>
