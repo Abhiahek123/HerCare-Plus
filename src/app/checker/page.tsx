@@ -180,40 +180,13 @@ export default function SymptomChecker() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gradient-to-b from-[#FFF5F7] via-white to-purple-50 relative overflow-hidden font-nunito">
-      {/* Innovative Animated Background - Floating Orbs */}
-      <motion.div 
-        animate={{ 
-          x: [0, 50, -30, 0], 
-          y: [0, -40, 20, 0],
-          scale: [1, 1.1, 0.9, 1]
-        }}
-        transition={{ 
-          duration: 20, 
-          repeat: Infinity, 
-          repeatType: "reverse",
-          ease: "easeInOut"
-        }}
-        className="fixed top-[-10%] right-[-10%] w-[600px] h-[600px] bg-gradient-to-br from-pink-200/40 to-rose-100/30 rounded-full blur-[100px] pointer-events-none"
-      />
-      <motion.div 
-        animate={{ 
-          x: [0, -40, 30, 0], 
-          y: [0, 50, -30, 0],
-          scale: [1, 0.9, 1.1, 1]
-        }}
-        transition={{ 
-          duration: 25, 
-          repeat: Infinity, 
-          repeatType: "reverse",
-          ease: "easeInOut",
-          delay: 2
-        }}
-        className="fixed bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-gradient-to-tr from-purple-200/40 to-indigo-100/30 rounded-full blur-[100px] pointer-events-none"
-      />
+    <div className="flex flex-col h-screen bg-[#FFF5F7] relative overflow-hidden font-nunito">
+      {/* Optimized Background - Lightweight CSS Gradients */}
+      <div className="absolute top-0 right-0 w-full h-[500px] bg-gradient-to-b from-pink-100/40 to-transparent pointer-events-none" />
+      <div className="absolute bottom-0 left-0 w-full h-[300px] bg-gradient-to-t from-purple-100/40 to-transparent pointer-events-none" />
 
-      {/* Header - Premium Glassmorphism */}
-      <div className="pt-20 pb-4 px-6 bg-white/70 backdrop-blur-xl border-b border-white/50 flex justify-between items-center z-10 sticky top-0 shadow-sm shadow-purple-900/5">
+      {/* Header - Optimized Glassmorphism */}
+      <div className="pt-20 pb-4 px-6 bg-white/90 backdrop-blur-md border-b border-gray-100 flex justify-between items-center z-10 sticky top-0 shadow-sm">
         <div>
           <h1 className="text-2xl font-black text-gray-800 tracking-tight flex items-center gap-2">
             HerCare
