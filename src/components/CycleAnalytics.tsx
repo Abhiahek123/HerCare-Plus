@@ -130,6 +130,56 @@ export default function CycleAnalytics({ entries, onClose, onStartTracking }: Cy
       }
     }
 
+    // Smart Insight Generation
+    let insight = {
+      title: "Building Your Profile",
+      description: "Keep logging to unlock personalized health tips.",
+      action: "Learn More",
+      color: "bg-blue-50 border-blue-100 text-blue-700"
+    };
+
+    if (totalLogs > 2) {
+      if (topSymptoms.length > 0) {
+        const s = topSymptoms[0][0].toLowerCase();
+        if (s.includes('cramp') || s.includes('pain') || s.includes('back')) {
+          insight = {
+            title: "Managing Discomfort",
+            description: "Pain is your most frequent symptom. Heat therapy and magnesium-rich foods might help.",
+            action: "Pain Relief Guide",
+            color: "bg-orange-50 border-orange-100 text-orange-700"
+          };
+        } else if (s.includes('fatigue') || s.includes('tired')) {
+          insight = {
+            title: "Energy Management",
+            description: "You often feel tired. Try prioritizing sleep and iron-rich foods during your flow.",
+            action: "Boost Energy",
+            color: "bg-purple-50 border-purple-100 text-purple-700"
+          };
+        } else if (s.includes('acne') || s.includes('skin')) {
+          insight = {
+            title: "Skin Care Focus",
+            description: "Hormonal changes are affecting your skin. Hydration and gentle cleansing can help.",
+            action: "Skin Tips",
+            color: "bg-pink-50 border-pink-100 text-pink-700"
+          };
+        }
+      } else if (topMood && ['sad', 'anxious', 'irritable'].includes(topMood[0].toLowerCase())) {
+        insight = {
+          title: "Emotional Wellness",
+          description: "Your cycle seems to impact your mood. Mindfulness or journaling might provide relief.",
+          action: "Self Care",
+          color: "bg-teal-50 border-teal-100 text-teal-700"
+        };
+      } else {
+        insight = {
+          title: "Steady Rhythm",
+          description: "Your cycle appears consistent. You're doing a great job tracking!",
+          action: "View Trends",
+          color: "bg-green-50 border-green-100 text-green-700"
+        };
+      }
+    }
+
     return {
       totalLogs,
       dataConfidence,
@@ -137,7 +187,8 @@ export default function CycleAnalytics({ entries, onClose, onStartTracking }: Cy
       flowDistribution,
       topMood: topMood ? { name: topMood[0], count: topMood[1] } : null,
       topSymptoms,
-      avgCycleLength
+      avgCycleLength,
+      insight
     };
   })() : null;
 
@@ -335,17 +386,30 @@ export default function CycleAnalytics({ entries, onClose, onStartTracking }: Cy
             {/* Scrollable Content */}
             <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 sm:space-y-5 pb-24">
               
-              {/* 1️⃣ PRIMARY INSIGHT (Calm, Plain Text) */}
+              {/* 1️⃣ PRIMARY INSIGHT CARD (Refined & Actionable) */}
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-white"
+                className={`p-5 rounded-[2rem] border ${stats.insight.color.replace('text-', 'border-').split(' ')[1]} ${stats.insight.color.split(' ')[0]} relative overflow-hidden`}
               >
-                <p className="text-lg text-gray-700 leading-relaxed font-medium">
-                  {stats.totalLogs < 3 
-                    ? "Based on limited data, your cycle appears generally within normal range."
-                    : "Your cycle patterns are becoming clearer. Consistency is key for accurate predictions."}
-                </p>
+                 <div className="flex justify-between items-start relative z-10">
+                   <div>
+                     <h3 className={`text-sm font-black uppercase tracking-widest mb-2 ${stats.insight.color.split(' ').pop()}`}>
+                       {stats.insight.title}
+                     </h3>
+                     <p className="text-gray-700 font-medium leading-relaxed text-sm mb-4">
+                       {stats.insight.description}
+                     </p>
+                     
+                     <button className="bg-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm hover:scale-105 transition-transform flex items-center gap-2">
+                        {stats.insight.action}
+                        <ChevronRight size={14} />
+                     </button>
+                   </div>
+                   <div className="bg-white/40 p-3 rounded-full backdrop-blur-sm">
+                      <Sparkles size={20} className={stats.insight.color.split(' ').pop()} />
+                   </div>
+                 </div>
               </motion.div>
 
               {/* 2️⃣ KEY NUMBERS (Side-by-Side, Soft Cards) */}
