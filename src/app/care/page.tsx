@@ -41,209 +41,150 @@ export default function FindCare() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-pink-50 to-white pt-16 pb-24">
-      {/* Header */}
-      <div className="px-6 py-6 bg-white border-b border-pink-100">
-        <div className="max-w-4xl mx-auto">
-          <h1 className="text-2xl font-bold text-gray-800 mb-2 flex items-center gap-2">
-            <Heart size={28} className="text-pink-500" fill="currentColor" />
-            Find Care for You, {nickname}
-          </h1>
-          <p className="text-sm text-gray-600">
-            {age && age < 18 
-              ? "Safe & supportive clinics for young women's health."
-              : age && age > 45
-              ? "Specialized care for every stage of your wellness journey."
-              : "Verified clinics with caring, professional doctors."}
-          </p>
+    <div className="flex flex-col h-[100dvh] bg-[#FFF5F7] font-nunito overflow-hidden">
+      {/* 🟢 STICKY HEADER GROUP */}
+      <div className="flex-none z-30 bg-white/95 backdrop-blur-md shadow-sm border-b border-pink-100/50">
+        
+        {/* Top Bar */}
+        <div className="px-6 py-5">
+           <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+             <Heart size={24} className="text-pink-500 fill-pink-500" />
+             Find Care
+           </h1>
+           <p className="text-xs text-gray-500 mt-1 pl-8">
+             {age && age < 18 ? "Trusted clinics for young women" : "Verified healthcare partners"}
+           </p>
         </div>
-      </div>
 
-      {/* City Selector */}
-      <div className="px-6 py-4 bg-white border-b border-gray-100">
-        <div className="max-w-4xl mx-auto">
-          <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Select City</label>
-          <div className="flex gap-3">
-            <button
-              onClick={() => setSelectedCity("jamshedpur")}
-              className={`flex-1 py-3 rounded-xl font-bold transition-all ${
-                selectedCity === "jamshedpur"
-                  ? "bg-gradient-to-r from-pink-500 to-rose-400 text-white shadow-lg"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
-            >
-              <MapPin size={16} className="inline mr-1" />
-              Jamshedpur
-            </button>
-            <button
-              onClick={() => setSelectedCity("bhagalpur")}
-              className={`flex-1 py-3 rounded-xl font-bold transition-all ${
-                selectedCity === "bhagalpur"
-                  ? "bg-gradient-to-r from-pink-500 to-rose-400 text-white shadow-lg"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
-            >
-              <MapPin size={16} className="inline mr-1" />
-              Bhagalpur
-            </button>
+        {/* Controls Row */}
+        <div className="px-6 pb-4 flex flex-col gap-3">
+          {/* City Toggle */}
+          <div className="flex bg-gray-100/80 p-1 rounded-xl">
+             <button onClick={() => setSelectedCity("jamshedpur")} className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${selectedCity === "jamshedpur" ? "bg-white text-pink-600 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
+               Jamshedpur
+             </button>
+             <button onClick={() => setSelectedCity("bhagalpur")} className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${selectedCity === "bhagalpur" ? "bg-white text-pink-600 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
+               Bhagalpur
+             </button>
+          </div>
+
+          {/* Filter Pills - Horizontal Scroll */}
+          <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar mask-gradient">
+             {[
+               { value: "all", label: "All" },
+               { value: "affordable", label: "Affordable (₹≤400)" },
+               { value: "emergency", label: "Emergency 24/7" },
+               { value: "womenOnly", label: "Women Only" }
+             ].map(f => (
+               <button
+                 key={f.value}
+                 onClick={() => setFilterType(f.value as any)}
+                 className={`whitespace-nowrap px-3 py-1.5 rounded-full text-[11px] font-bold border transition-colors ${
+                   filterType === f.value 
+                   ? "bg-pink-500 border-pink-500 text-white" 
+                   : "bg-white border-gray-200 text-gray-600"
+                 }`}
+               >
+                 {f.label}
+               </button>
+             ))}
           </div>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="px-6 py-4 bg-gradient-to-r from-purple-50 to-pink-50">
-        <div className="max-w-4xl mx-auto">
-          <label className="text-xs font-bold text-gray- uppercase tracking-wider mb-2 block flex items-center gap-1">
-            <Filter size={14} />
-            Filter By
-          </label>
-          <div className="flex gap-2 flex-wrap">
-            {[
-              { value: "all", label: "All Clinics" },
-              { value: "affordable", label: "Affordable (₹≤400)" },
-              { value: "emergency", label: "24/7 Emergency" },
-              { value: "womenOnly", label: "Women-Only" }
-            ].map(filter => (
-              <button
-                key={filter.value}
-                onClick={() => setFilterType(filter.value as typeof filterType)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                  filterType === filter.value
-                    ? "bg-purple-600 text-white shadow-md"
-                    : "bg-white text-gray-700 border border-purple-200 hover:border-purple-400"
-                }`}
-              >
-                {filter.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
+      {/* 🟢 SCROLLABLE LIST AREA */}
+      <div className="flex-1 overflow-y-auto px-4 pt-4 pb-32 scroll-smooth">
+         
+         <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 px-2">
+           {filteredClinics.length} Results Near You
+         </p>
 
-      {/* Results Count */}
-      <div className="px-6 py-3 max-w-4xl mx-auto">
-        <p className="text-sm text-gray-600">
-          <strong>{filteredClinics.length}</strong> women-friendly {filteredClinics.length === 1 ? "clinic" : "clinics"} found in <strong>{selectedCity === "jamshedpur" ? "Jamshedpur" : "Bhagalpur"}</strong>
-        </p>
-      </div>
+         <div className="space-y-4">
+           {filteredClinics.map((clinic, index) => (
+             <motion.div
+               key={clinic.id}
+               initial={{ opacity: 0, y: 20 }}
+               animate={{ opacity: 1, y: 0 }}
+               transition={{ delay: index * 0.05 }}
+               className="bg-white rounded-[1.5rem] border border-pink-50 shadow-sm p-5 relative overflow-hidden group"
+             >
+               {/* Badges */}
+               <div className="flex gap-2 mb-3">
+                 {clinic.womenFriendly && (
+                   <span className="bg-pink-50 text-pink-700 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider">
+                     Women Friendly
+                   </span>
+                 )}
+                 {clinic.affordable && (
+                   <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider">
+                     Affordable
+                   </span>
+                 )}
+               </div>
 
-      {/* Clinic List */}
-      <div className="px-6 py-4 max-w-4xl mx-auto space-y-4">
-        {filteredClinics.map((clinic, index) => (
-          <motion.div
-            key={clinic.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.05 }}
-            className="bg-white rounded-2xl border border-pink-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow"
-          >
-            <div className="p-5">
-              {/* Header */}
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex-1">
-                  <h3 className="font-bold text-gray-800 text-lg mb-1">{clinic.name}</h3>
-                  <p className="text-xs text-gray-500 uppercase tracking-wide">{clinic.type}</p>
-                </div>
-                {clinic.womenFriendly && (
-                  <div className="bg-pink-100 text-pink-700 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
-                    <Heart size={12} fill="currentColor" />
-                    Women-Friendly
-                  </div>
-                )}
-              </div>
+               <div className="flex justify-between items-start mb-2">
+                 <div>
+                   <h3 className="font-bold text-lg text-gray-900 leading-tight mb-1">{clinic.name}</h3>
+                   <p className="text-xs text-gray-500 flex items-center gap-1">
+                     <MapPin size={12} />
+                     {clinic.address}
+                   </p>
+                 </div>
+                 <div className="bg-green-50 text-green-700 px-2 py-1 rounded-lg font-bold text-sm flex items-center gap-1">
+                   {clinic.rating} <Star size={10} fill="currentColor" />
+                 </div>
+               </div>
 
-              {/* Rating */}
-              <div className="flex items-center gap-2 mb-3">
-                <div className="flex items-center bg-green-100 px-2 py-1 rounded-lg">
-                  <Star size={14} className="text-green-600 mr-1" fill="currentColor" />
-                  <span className="text-sm font-bold text-green-800">{clinic.rating}</span>
-                </div>
-                <span className="text-xs text-gray-500">({clinic.reviews} reviews)</span>
-                {clinic.emergency && (
-                  <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full font-medium">24/7 Emergency</span>
-                )}
-                {clinic.affordable && (
-                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-medium">Affordable</span>
-                )}
-              </div>
-
-              {/* Address */}
-              <div className="flex items-start gap-2 mb-3">
-                <MapPin size={16} className="text-gray-400 shrink-0 mt-0.5" />
-                <p className="text-sm text-gray-600">{clinic.address}</p>
-              </div>
-
-              {/* Specialties */}
-              <div className="mb-4">
-                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Specialties</p>
-                <div className="flex flex-wrap gap-2">
-                  {clinic.specialties.map((specialty, idx) => (
-                    <span key={idx} className="text-xs bg-purple-50 text-purple-700 px-2 py-1 rounded-full">
-                      {specialty}
-                    </span>
+               {/* Tags */}
+               <div className="flex flex-wrap gap-1.5 mb-4">
+                  {clinic.specialties.slice(0, 3).map((s, i) => (
+                    <span key={i} className="text-[10px] text-gray-500 bg-gray-50 px-2 py-1 rounded-full">{s}</span>
                   ))}
-                </div>
+               </div>
+
+               <div className="flex items-center justify-between border-t border-gray-50 pt-4 mt-2">
+                  <div>
+                    <span className="block text-[10px] text-gray-400 font-bold uppercase">Consultation</span>
+                    <span className="text-lg font-black text-pink-500">
+                      {clinic.fees === 0 ? "FREE" : `₹${clinic.fees}`}
+                    </span>
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => handleCall(clinic.phone)}
+                      className="w-10 h-10 rounded-full bg-green-50 text-green-600 flex items-center justify-center hover:bg-green-100 transition-colors"
+                    >
+                      <Phone size={18} />
+                    </button>
+                    <button 
+                      onClick={() => handleNavigate(clinic.location.lat, clinic.location.lng, clinic.name)}
+                      className="h-10 px-5 rounded-full bg-gray-900 text-white text-xs font-bold uppercase tracking-wide flex items-center gap-2 hover:bg-black transition-colors"
+                    >
+                      Navigate
+                      <Navigation size={14} />
+                    </button>
+                  </div>
+               </div>
+             </motion.div>
+           ))}
+
+           {filteredClinics.length === 0 && (
+              <div className="text-center py-20 opacity-50">
+                 <p>No clinics found.</p>
+                 <button onClick={() => setFilterType("all")} className="text-pink-500 underline text-sm">Clear filters</button>
               </div>
+           )}
 
-              {/* Fees */}
-              <div className="flex items-center gap-2 mb-4">
-                <p className="text-sm text-gray-600">Consultation Fee:</p>
-                <p className="text-lg font-bold text-pink-600">
-                  {clinic.fees === 0 ? "FREE" : `₹${clinic.fees}`}
-                </p>
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-3">
-                <button
-                  onClick={() => handleCall(clinic.phone)}
-                  className="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:from-green-600 hover:to-green-700 transition-all shadow-md"
-                >
-                  <Phone size={18} />
-                  Call Now
-                </button>
-                <button
-                  onClick={() => handleNavigate(clinic.location.lat, clinic.location.lng, clinic.name)}
-                  className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:from-blue-600 hover:to-blue-700 transition-all shadow-md"
-                >
-                  <Navigation size={18} />
-                  Navigate
-                </button>
-              </div>
-
-              {/* Timings */}
-              {clinic.timings && (
-                <p className="text-xs text-gray-500 mt-3 text-center">
-                  <strong>Timings:</strong> {clinic.timings}
-                </p>
-              )}
-            </div>
-          </motion.div>
-        ))}
-      </div>
-
-      {/* No Results */}
-      {filteredClinics.length === 0 && (
-        <div className="text-center py-12">
-          <p className="text-gray-500 mb-2">No clinics match your filters</p>
-          <button
-            onClick={() => setFilterType("all")}
-            className="text-purple-600 font-medium underline"
-          >
-            Clear filters
-          </button>
-        </div>
-      )}
-
-      {/* Emergency Banner */}
-      <div className="px-6 py-4 max-w-4xl mx-auto mt-6">
-        <div className="bg-gradient-to-r from-red-50 to-orange-50 p-5 rounded-2xl border border-red-100">
-          <h3 className="font-bold text-red-800 mb-2">Medical Emergency?</h3>
-          <p className="text-sm text-red-700 mb-3">If you need immediate help, call:</p>
-          <a href="tel:108" className="inline-block bg-red-600 text-white px-6 py-3 rounded-full font-bold hover:bg-red-700 transition-all">
-            Call 108 - Free Ambulance
-          </a>
-        </div>
+           {/* Emergency Card */}
+           <div className="bg-red-50 rounded-2xl p-5 border border-red-100 mt-8 mb-4">
+              <h4 className="font-bold text-red-800 text-sm mb-1">Emergency Warning</h4>
+              <p className="text-xs text-red-600 mb-3">If you have severe pain or bleeding, do not wait.</p>
+              <a href="tel:108" className="block w-full text-center bg-red-600 text-white font-bold text-sm py-3 rounded-xl shadow-lg shadow-red-200">
+                 Call 108 Ambulance
+              </a>
+           </div>
+         </div>
       </div>
 
       <BottomNav />
