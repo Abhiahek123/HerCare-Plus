@@ -169,30 +169,39 @@ export default function CyclePage() {
       </div>
 
       <main className="flex-1 p-6 space-y-8">
-        {/* Simplified Status Hero */}
+        {/* Simplified Status Hero - Flashy Sisterly Premium */}
         <motion.div 
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="bg-white rounded-[2.5rem] p-8 shadow-xl shadow-purple-900/5 border border-white relative overflow-hidden"
+          className="bg-gradient-to-br from-white via-[#FFF0F5] to-[#F3E8FF] rounded-[2.5rem] p-8 shadow-2xl shadow-purple-900/10 border border-white/80 relative overflow-hidden"
         >
-           <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${PHASE_COLORS[currentPhase as keyof typeof PHASE_COLORS]} opacity-5 rounded-bl-full`}></div>
+           {/* Soft Glow overlay */}
+           <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-br from-pink-400/10 to-purple-400/10 blur-3xl rounded-full -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+
+           <div className={`absolute top-0 right-0 w-40 h-40 bg-gradient-to-bl ${PHASE_COLORS[currentPhase as keyof typeof PHASE_COLORS]} opacity-10 rounded-bl-full`}></div>
            
-           <div className="flex justify-between items-start mb-6">
+           <div className="flex justify-between items-start mb-8 relative z-10">
               <div>
-                <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest text-white shadow-lg bg-gradient-to-r ${PHASE_COLORS[currentPhase as keyof typeof PHASE_COLORS]}`}>
+                <span className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-pink-200/50 bg-gradient-to-r ${PHASE_COLORS[currentPhase as keyof typeof PHASE_COLORS]}`}>
                   {currentPhase} Phase
                 </span>
               </div>
               <div className="text-right">
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Next Prediction</p>
-                <p className="text-sm font-bold text-gray-600">{nextDate || "Need data"}</p>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Next Cycle</p>
+                <div className="bg-white/60 backdrop-blur-md px-3 py-1 rounded-xl border border-white inline-block">
+                   <p className="text-sm font-bold text-gray-600">{nextDate || "Need data"}</p>
+                </div>
               </div>
            </div>
 
-           <div className="flex items-center gap-6">
-              <div className="relative">
-                <div className={`w-24 h-24 rounded-full border-4 border-white flex items-center justify-center bg-gradient-to-br from-pink-400 to-rose-400 shadow-xl shadow-pink-300/50`}>
-                  <span className="text-3xl font-black text-white drop-shadow-sm">
+           <div className="flex items-center gap-8 relative z-10">
+              <div className="relative group">
+                <div className="absolute inset-0 bg-pink-400 blur-xl opacity-20 group-hover:opacity-30 transition-opacity rounded-full"></div>
+                <div className={`relative w-28 h-28 rounded-full border-[6px] border-white flex items-center justify-center bg-gradient-to-br from-[#FF8FAB] via-[#FB7185] to-[#E11D48] shadow-2xl shadow-rose-300/50`}>
+                  {/* Inner shine */}
+                  <div className="absolute inset-0 rounded-full bg-gradient-to-t from-black/0 via-white/20 to-white/40 opacity-50"></div>
+                  
+                  <span className="text-4xl font-black text-white drop-shadow-md relative z-10">
                     {daysUntilPeriod !== null ? daysUntilPeriod : "--"}
                   </span>
                 </div>
@@ -420,27 +429,38 @@ export default function CyclePage() {
               <div className="space-y-6">
                 {/* Flow Level */}
                 <div>
-                  <div className="flex gap-3">
-                    {(['light', 'medium', 'heavy'] as FlowType[]).map((flow) => (
+                  <div className="grid grid-cols-3 gap-3">
+                    {([
+                      { id: 'light', label: 'Spotting', gradient: 'from-pink-100 to-pink-200', text: 'text-pink-600', border: 'border-pink-200' },
+                      { id: 'medium', label: 'Medium', gradient: 'from-pink-400 to-rose-400', text: 'text-white', border: 'border-pink-400' },
+                      { id: 'heavy', label: 'Heavy', gradient: 'from-rose-600 to-red-600', text: 'text-white', border: 'border-rose-600' }
+                    ] as const).map((level) => (
                       <button
-                        key={flow}
-                        onClick={() => setSelectedFlow(flow)}
+                        key={level.id}
+                        onClick={() => setSelectedFlow(level.id as FlowType)}
                         className={`
-                          flex-1 py-5 rounded-3xl border-2 transition-all flex flex-col items-center gap-2.5 relative overflow-hidden
-                          ${selectedFlow === flow 
-                            ? 'bg-gradient-to-br from-pink-500 via-pink-500 to-rose-500 border-pink-400 text-white shadow-2xl shadow-pink-300/60 scale-105' 
-                            : 'bg-white border-gray-200 text-gray-400 hover:border-pink-200 hover:bg-pink-50/50 hover:scale-102'
+                          py-5 rounded-[1.5rem] border-2 transition-all duration-200 flex flex-col items-center gap-2 relative overflow-hidden group
+                          ${selectedFlow === level.id 
+                            ? `bg-gradient-to-b ${level.gradient} ${level.id === 'light' ? 'text-pink-700' : 'text-white'} shadow-lg scale-105 border-transparent` 
+                            : 'bg-white border-gray-100 text-gray-400 hover:bg-gray-50'
                           }
                         `}
                       >
-                        {selectedFlow === flow && (
-                          <div className="absolute inset-0 bg-gradient-to-t from-white/10 to-transparent"></div>
+                        {/* Interactive Wave Background (Hidden unless selected or hover) */}
+                        {selectedFlow === level.id && (
+                           <div className="absolute inset-0 bg-white/10 opacity-30 animate-pulse"></div>
                         )}
-                        <Droplets size={28} fill={selectedFlow === flow ? "white" : "none"} strokeWidth={2} className="relative z-10" />
-                        <span className="text-xs font-black uppercase tracking-wider relative z-10">{flow}</span>
+                        
+                        <Droplets 
+                          size={24} 
+                          className={`z-10 transition-colors ${selectedFlow === level.id ? 'fill-current' : 'fill-none'}`} 
+                          strokeWidth={2.5}
+                        />
+                        <span className="text-[11px] font-black uppercase tracking-widest z-10">{level.label}</span>
                       </button>
                     ))}
                   </div>
+
                 </div>
 
                 {/* Mood Picker */}

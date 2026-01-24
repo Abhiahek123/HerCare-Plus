@@ -32,6 +32,14 @@
     padding: 0;
     margin: 0;
     -webkit-tap-highlight-color: transparent; /* Mobile: No blue tap box */
+    touch-action: manipulation; /* ⚡️ CORE FIX: Removes 300ms tap delay on mobile */
+  }
+
+  /* ⚡️ ULTRA SNAPPY MODE: Instant visual feedback for ALL interactables */
+  button:active, a:active, [role="button"]:active {
+    transform: scale(0.96);
+    transition: transform 0.05s ease-out !important;
+    filter: brightness(0.95);
   }
 
   html {
