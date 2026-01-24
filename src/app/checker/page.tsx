@@ -281,7 +281,7 @@ export default function SymptomChecker() {
               </div>
            </div>
         )}
-        <div ref={messagesEndRef} />
+        <div ref={messagesEndRef} className="h-40" />
       </div>
 
       <AnimatePresence>
