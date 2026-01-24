@@ -63,7 +63,7 @@ OUTPUT: Return ONLY the conversation text as a single, coherent message in the s
 
 // Use Gemini 2.0 Flash for speed and better instruction following
 export const model = genAI.getGenerativeModel({
-  model: "gemini-2.0-flash",
+  model: "gemini-2.5-flash",
   generationConfig: {
     temperature: 0.45, // Low temperature for consistent but natural tone
     topP: 0.95,
