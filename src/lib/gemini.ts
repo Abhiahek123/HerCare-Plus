@@ -3,109 +3,110 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 // Initialize Gemini
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "AIzaSyBTp-Ilhqfry5pSqOTvpeIPUEElCM2f8GM");
 
-// PERFECTED WOMEN'S WELLNESS COMPANION
+// ENHANCED WITH SMART QUERY ROUTING
 export const unifiedPrompt = (
   nickname: string,
   age: string,
   location: string,
   symptoms: string,
   language: string,
-  hourOfDay?: number,
-  previousSummary?: string
+  hourOfDay?: number
 ) => `
 
-# ROLE: HerCare+ Companion
-You're a warm, supportive companion who listens deeply and offers thoughtful perspective on women's wellbeing - health, emotions, relationships, and everything in between.
+# CRITICAL FIRST STEP: UNDERSTAND THE QUERY TYPE
 
-# YOUR APPROACH
-1. **Listen first**: Start with empathy, not solutions
-2. **Share only what's needed now**: Be a silent intelligence - know more than you say
-3. **Respect boundaries**: You're a guide, not a doctor or moral judge
-4. **Keep it human**: Write like a caring conversation, not a textbook
+Analyze this query: "${symptoms}"
 
-# SPECIAL ATTENTION POINTS
-Suggest professional care if someone mentions:
-- Pain that's intense or getting worse
-- Heavy or unusual bleeding
-- High fever or signs of infection
-- Feeling overwhelmed, hopeless, or unsafe
-- Anything that feels "not right" to them
+Is it:
+A) Physical health/medical concern? (pain, discomfort, body changes, illness)
+B) Emotional/relationship/personal concern? (feelings, relationships, stress, love)
+C) Sexual health/body curiosity? (questions about body, intimacy, curiosity)
+D) Casual/emotional expression? (statements like "I'm horny", "I'm sad", "I'm happy")
 
-# ADDITIONAL BEHAVIOR RULES
-- If the user asks about love, relationships, or emotional attachment, respond with empathy and practical emotional guidance
-- If the user asks general sexual health or body-curiosity questions, respond in an educational, respectful, non-explicit manner
-- Do not provide graphic, step-by-step, or arousal-focused sexual content
-- Never shame, judge, or dismiss the user. Say: "It's okay to feel curious" or "Your choices matter"
-- If a question crosses into explicit detail, gently set boundaries and redirect toward safety, comfort, and self-respect
-- If age seems under 18 in sexual topics, focus on general reassurance and suggest trusted adults
+# YOUR ROLE: HerCare+ Companion
+You're a warm, supportive companion who adapts to what the user needs.
 
-# TONE ADJUSTMENT
-**Language**: ${language}, considering ${location}
-**For ${age} year old**: Adjust depth appropriately
-**Time of day**: ${hourOfDay ? (hourOfDay < 12 ? 'Morning - be gently encouraging' : hourOfDay > 20 ? 'Night - be extra calm and reassuring' : 'Day - be balanced') : 'Be naturally warm'}
+# RESPONSE RULES BY QUERY TYPE:
 
-${previousSummary ? `# PREVIOUS CONTEXT (Light memory):\n${previousSummary}\n` : ''}
+## IF QUERY TYPE A (Medical/Physical):
+* Start with empathy: "I hear this is affecting you physically"
+* Ask gently: "How long has this been happening?"
+* Suggest professional care if: pain is severe, bleeding is heavy, fever is high, or something feels "alarmingly wrong"
+* Recommended action: "Rest and observe" or "Consider checking with a doctor"
 
-# HOW YOU THINK (INTERNAL - NOT SHOWN)
-1. What's the emotional core here?
-2. What practical support would help RIGHT NOW?
-3. What's the ONE next step I should suggest?
-4. Should I gently mention professional input?
+## IF QUERY TYPE B (Emotional/Relationship):
+* Start with validation: "These feelings are real and important"
+* Be a thoughtful listener: Ask gentle questions to understand
+* Never judge relationships or emotions
+* Recommended action: "Take time to reflect" or "Talk to someone you trust"
 
-# YOUR RESPONSE RULES
-- Start with empathy and validation (1-2 sentences)
-- Share gentle, practical perspective (keep it brief)
-- End with ONE clear next step
-- No headings, no bullet points unless natural
-- Feel like a flowing, caring conversation
-- Remember: Presence > Helpfulness. Sometimes just being heard is enough.
+## IF QUERY TYPE C (Sexual Health/Body Curiosity):
+* Be educational and respectful
+* Keep it non-explicit: Focus on safety, comfort, consent
+* Normalize curiosity without graphic details
+* Recommended action: "Learn about your body safely" or "Talk to a trusted adult/health provider"
 
-# OUTPUT FORMAT (STRICT JSON)
+## IF QUERY TYPE D (Casual Expression):
+* Match the emotional tone
+* If "I'm horny": "It's normal to have these feelings. Remember to respect yourself and others, and make choices that feel safe and right for you."
+* If emotional: Reflect and validate
+* Recommended action: "Be gentle with yourself"
+
+# TONE & APPROACH
+* Language: ${language} (consider ${location} culture)
+* For ${age} year old: Adjust appropriately
+* Time: ${hourOfDay ? (hourOfDay > 20 ? 'Evening - be calm' : hourOfDay < 6 ? 'Late night - be reassuring' : 'Normal hours - be present') : 'Be natural'}
+* Be human, not robotic
+* ONE clear next step only
+
+# OUTPUT FORMAT (JSON ONLY)
 {
-  "conversation": "A warm, natural response that starts with listening and ends with one gentle next step.",
-  "show_doctor_choice": true or false, // Only if any special attention points are present
-  "recommended_action": "One simple action like: 'Rest and observe' or 'Consider talking to someone'",
-  "data_clarity": "low/medium/high" // How clear is the information shared?
+  "conversation": "Start with appropriate response for the query type. Be warm, brief, and human. End with one gentle question or reflection.",
+  "show_doctor_choice": true/false, // True ONLY for clear medical concerns needing attention
+  "recommended_action": "One simple step like: 'Reflect on this' or 'Rest and hydrate'"
 }
 
-# USER'S SHARING
+# USER CONTEXT
 Nickname: ${nickname}
-What they're sharing: "${symptoms}"
+Sharing: "${symptoms}"
 `;
 
-// Optimized model configuration
+// Optimized model
 export const model = genAI.getGenerativeModel({
   model: "gemini-1.5-flash",
   generationConfig: {
-    temperature: 0.42,
-    topP: 0.88,
-    topK: 25,
-    maxOutputTokens: 650,
+    temperature: 0.5, // Slightly higher for more natural variation
+    topP: 0.9,
+    topK: 30,
+    maxOutputTokens: 600,
     responseMimeType: "application/json",
   }
 });
 
-// Backend processing with memory and tone
-export const processHerCareResponse = async (
-  userInput: any, 
-  history: Array<{role: string, content: any}> = []
+// SMARTER PROCESSING FUNCTION
+export const processQuery = async (
+  nickname: string,
+  age: string,
+  location: string,
+  query: string,
+  language: string = "English"
 ) => {
   try {
-    // Generate 1-line memory summary from last interaction
-    const previousSummary = history.length > 0 
-      ? await generateMemorySummary(history[history.length-1].content)
-      : undefined;
-
-    const hourOfDay = new Date().getHours();
+    const hour = new Date().getHours();
+    
+    // First, do a quick classification on our side
+    const queryType = classifyQuery(query);
+    
+    // Add classification hint to prompt for better results
+    const enhancedQuery = `${query} [Detected as: ${queryType}]`;
     
     const prompt = unifiedPrompt(
-      userInput.nickname,
-      userInput.age,
-      userInput.location,
-      userInput.symptoms,
-      userInput.language,
-      hourOfDay,
-      previousSummary
+      nickname,
+      age,
+      location,
+      enhancedQuery,
+      language,
+      hour
     );
     
     const result = await model.generateContent(prompt);
@@ -113,60 +114,93 @@ export const processHerCareResponse = async (
     
     const response = await validateResponse(text);
     
-    // Add system trust messages (outside AI response)
+    // Add UI micro-copy based on query type
+    const uiMessages = getUIMessages(queryType, age);
+    
     return {
       ...response,
-      systemMessages: [
-        "You're in control here.",
-        "You can clear this anytime.",
-        "This is your private space."
-      ]
+      uiMessages,
+      queryType
     };
     
   } catch (error) {
     console.error("Processing error:", error);
-    return getFallbackResponse();
+    return getFallbackResponse(query);
   }
 };
 
-// Light memory: 1-line summary of last chat
-async function generateMemorySummary(lastContent: any) {
-  // Simple extraction - in production, use a separate lightweight AI call
-  if (typeof lastContent === 'string') {
-    // Extract key emotional/physical words
-    const keywords = lastContent.toLowerCase().match(/\b(pain|stress|happy|worried|period|sleep|energy)\b/g);
-    if (keywords && keywords.length > 0) {
-      return `Previously mentioned: ${[...new Set(keywords)].slice(0, 3).join(', ')}`;
-    }
-  }
-  return undefined;
+// SIMPLE QUERY CLASSIFICATION
+function classifyQuery(query: string): string {
+  const lowerQuery = query.toLowerCase().trim();
+  
+  // Medical indicators
+  const medicalWords = ['pain', 'hurt', 'ache', 'fever', 'bleed', 'period', 'headache', 'stomach', 'vomit', 'dizzy', 'sick', 'ill', 'symptom'];
+  if (medicalWords.some(word => lowerQuery.includes(word))) return "MEDICAL";
+  
+  // Emotional indicators
+  const emotionalWords = ['sad', 'happy', 'angry', 'stressed', 'anxious', 'depressed', 'lonely', 'love', 'crush', 'relationship', 'breakup'];
+  if (emotionalWords.some(word => lowerQuery.includes(word))) return "EMOTIONAL";
+  
+  // Sexual/body curiosity indicators (careful handling)
+  const bodyWords = ['horny', 'arous', 'masturbat', 'sexual', 'intimacy', 'body', 'touch', 'feel', 'curious', 'private'];
+  if (bodyWords.some(word => lowerQuery.includes(word))) return "BODY_CURIOSITY";
+  
+  // Casual expression
+  if (lowerQuery.length < 20 && !lowerQuery.includes('?')) return "EXPRESSION";
+  
+  return "GENERAL";
 }
 
-// Response validation
+// UI MESSAGES BASED ON QUERY TYPE
+function getUIMessages(queryType: string, age: string): string[] {
+  const baseMessages = ["This is your private space.", "You're in control here."];
+  
+  switch(queryType) {
+    case "MEDICAL":
+      return [...baseMessages, "Listen to your body."];
+    case "EMOTIONAL":
+      return [...baseMessages, "Your feelings matter."];
+    case "BODY_CURIOSITY":
+      return age < 18 
+        ? [...baseMessages, "It's okay to be curious.", "Talk to trusted adults about body questions."]
+        : [...baseMessages, "Your body, your journey.", "Always prioritize safety and consent."];
+    default:
+      return baseMessages;
+  }
+}
+
 async function validateResponse(rawText: string) {
   try {
     const parsed = JSON.parse(rawText);
     
-    // Ensure contract stability
     return {
-      conversation: parsed.conversation || "I hear you. It takes courage to share what you're feeling.",
+      conversation: parsed.conversation || "Thank you for sharing. I'm here to listen.",
       show_doctor_choice: Boolean(parsed.show_doctor_choice),
-      recommended_action: parsed.recommended_action || "Take one gentle step today",
-      data_clarity: ["low", "medium", "high"].includes(parsed.data_clarity) 
-        ? parsed.data_clarity 
-        : "medium"
+      recommended_action: parsed.recommended_action || "Take a moment for yourself"
     };
   } catch (e) {
     console.error("JSON parse error:", e);
-    return getFallbackResponse();
+    return getFallbackResponse("");
   }
 }
 
-function getFallbackResponse() {
+function getFallbackResponse(query: string) {
+  // Smarter fallback based on query
+  const lowerQuery = query.toLowerCase();
+  
+  if (lowerQuery.includes("horny") || lowerQuery.includes("arous")) {
+    return {
+      conversation: "It's completely normal to have these feelings. Remember to respect yourself and make choices that feel safe and right for you.",
+      show_doctor_choice: false,
+      recommended_action: "Be gentle with yourself",
+      uiMessages: ["This is your private space.", "Your feelings are valid."]
+    };
+  }
+  
   return {
-    conversation: "Thank you for sharing that with me. Sometimes just putting things into words helps. I'm here to listen.",
+    conversation: "Thank you for sharing that. Sometimes the first step is just putting it into words.",
     show_doctor_choice: false,
     recommended_action: "Take a deep breath",
-    data_clarity: "low"
+    uiMessages: ["You're in control here.", "This conversation is private."]
   };
 }
