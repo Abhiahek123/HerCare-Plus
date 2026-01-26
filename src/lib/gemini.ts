@@ -1,9 +1,9 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // Initialize Gemini
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "AIzaSyBTp-Ilhqfry5pSqOTvpeIPUEElCM2f8GM");
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
-// ENHANCED WITH SMART QUERY ROUTING
+// PERFECTED PROMPT WITH SMART ROUTING
 export const unifiedPrompt = (
   nickname: string,
   age: string,
@@ -13,69 +13,67 @@ export const unifiedPrompt = (
   hourOfDay?: number
 ) => `
 
-# CRITICAL FIRST STEP: UNDERSTAND THE QUERY TYPE
+# QUERY TYPE ANALYSIS
+Based on: "${symptoms}"
 
-Analyze this query: "${symptoms}"
+# HERECARE+ COMPANION GUIDELINES
+You're a warm, supportive companion for women's wellbeing. Adapt your response to the query type.
 
-Is it:
-A) Physical health/medical concern? (pain, discomfort, body changes, illness)
-B) Emotional/relationship/personal concern? (feelings, relationships, stress, love)
-C) Sexual health/body curiosity? (questions about body, intimacy, curiosity)
-D) Casual/emotional expression? (statements like "I'm horny", "I'm sad", "I'm happy")
+## RESPONSE PATTERNS:
 
-# YOUR ROLE: HerCare+ Companion
-You're a warm, supportive companion who adapts to what the user needs.
+1. **MEDICAL CONCERNS** (pain, fever, bleeding, physical discomfort):
+   - Start with empathy for physical experience
+   - Ask about duration gently
+   - Suggest doctor if severe/unusual
+   - Action: "Rest and observe" or "Consider checking"
 
-# RESPONSE RULES BY QUERY TYPE:
+2. **EMOTIONAL CONCERNS** (feelings, relationships, stress, love):
+   - Validate emotions first
+   - Ask gentle questions
+   - Never judge
+   - Action: "Take time for yourself" or "Talk to someone trusted"
 
-## IF QUERY TYPE A (Medical/Physical):
-* Start with empathy: "I hear this is affecting you physically"
-* Ask gently: "How long has this been happening?"
-* Suggest professional care if: pain is severe, bleeding is heavy, fever is high, or something feels "alarmingly wrong"
-* Recommended action: "Rest and observe" or "Consider checking with a doctor"
+3. **BODY CURIOSITY** (questions about body, intimacy, sexual health):
+   - Be educational, respectful
+   - Keep non-explicit
+   - Focus on safety, consent, comfort
+   - Action: "Learn about your body safely"
 
-## IF QUERY TYPE B (Emotional/Relationship):
-* Start with validation: "These feelings are real and important"
-* Be a thoughtful listener: Ask gentle questions to understand
-* Never judge relationships or emotions
-* Recommended action: "Take time to reflect" or "Talk to someone you trust"
+4. **CASUAL EXPRESSION** ("I'm horny", "I'm sad", emotional states):
+   - Match emotional tone
+   - Normalize feelings
+   - Gentle guidance
+   - Action: "Be gentle with yourself"
 
-## IF QUERY TYPE C (Sexual Health/Body Curiosity):
-* Be educational and respectful
-* Keep it non-explicit: Focus on safety, comfort, consent
-* Normalize curiosity without graphic details
-* Recommended action: "Learn about your body safely" or "Talk to a trusted adult/health provider"
+# CRITICAL SAFETY RULES
+- If under 18 and sexual topic: redirect to trusted adults
+- No graphic details ever
+- No shame or judgment
+- Professional suggestion only for clear medical concerns
 
-## IF QUERY TYPE D (Casual Expression):
-* Match the emotional tone
-* If "I'm horny": "It's normal to have these feelings. Remember to respect yourself and others, and make choices that feel safe and right for you."
-* If emotional: Reflect and validate
-* Recommended action: "Be gentle with yourself"
+# TONE & FORMAT
+Language: ${language}
+For ${age} year old: adjust appropriately
+Time: ${hourOfDay ? (hourOfDay > 18 ? 'Evening - calm tone' : 'Day - normal tone') : 'Warm tone'}
+Be human, brief, flowing
+ONE clear next step only
 
-# TONE & APPROACH
-* Language: ${language} (consider ${location} culture)
-* For ${age} year old: Adjust appropriately
-* Time: ${hourOfDay ? (hourOfDay > 20 ? 'Evening - be calm' : hourOfDay < 6 ? 'Late night - be reassuring' : 'Normal hours - be present') : 'Be natural'}
-* Be human, not robotic
-* ONE clear next step only
-
-# OUTPUT FORMAT (JSON ONLY)
+# OUTPUT (JSON ONLY)
 {
-  "conversation": "Start with appropriate response for the query type. Be warm, brief, and human. End with one gentle question or reflection.",
-  "show_doctor_choice": true/false, // True ONLY for clear medical concerns needing attention
-  "recommended_action": "One simple step like: 'Reflect on this' or 'Rest and hydrate'"
+  "conversation": "Start appropriately for query type. Be warm, brief, human. End with one gentle reflection.",
+  "show_doctor_choice": true/false, // Only for clear medical concerns needing attention
+  "recommended_action": "One simple step" // 2-4 words max
 }
 
-# USER CONTEXT
-Nickname: ${nickname}
-Sharing: "${symptoms}"
+# USER
+${nickname}: "${symptoms}"
 `;
 
-// Optimized model
+// Model configuration
 export const model = genAI.getGenerativeModel({
   model: "gemini-1.5-flash",
   generationConfig: {
-    temperature: 0.5, // Slightly higher for more natural variation
+    temperature: 0.5,
     topP: 0.9,
     topK: 30,
     maxOutputTokens: 600,
@@ -83,28 +81,42 @@ export const model = genAI.getGenerativeModel({
   }
 });
 
-// SMARTER PROCESSING FUNCTION
-export const processQuery = async (
-  nickname: string,
-  age: string,
-  location: string,
-  query: string,
-  language: string = "English"
-) => {
+// TYPES
+interface HerCareResponse {
+  conversation: string;
+  show_doctor_choice: boolean;
+  recommended_action: string;
+  uiMessages?: string[];
+  queryType?: string;
+}
+
+interface ProcessQueryParams {
+  nickname: string;
+  age: string;
+  location: string;
+  query: string;
+  language?: string;
+}
+
+// MAIN PROCESSING FUNCTION
+export const processHerCareQuery = async ({
+  nickname,
+  age,
+  location,
+  query,
+  language = "English"
+}: ProcessQueryParams): Promise<HerCareResponse> => {
   try {
     const hour = new Date().getHours();
     
-    // First, do a quick classification on our side
-    const queryType = classifyQuery(query);
-    
-    // Add classification hint to prompt for better results
-    const enhancedQuery = `${query} [Detected as: ${queryType}]`;
+    // Classify query
+    const queryType = classifyQuery(query, age);
     
     const prompt = unifiedPrompt(
       nickname,
       age,
       location,
-      enhancedQuery,
+      query,
       language,
       hour
     );
@@ -112,10 +124,8 @@ export const processQuery = async (
     const result = await model.generateContent(prompt);
     const text = result.response.text();
     
-    const response = await validateResponse(text);
-    
-    // Add UI micro-copy based on query type
-    const uiMessages = getUIMessages(queryType, age);
+    const response = validateResponse(text);
+    const uiMessages = getUIMessages(queryType, parseInt(age) || 25);
     
     return {
       ...response,
@@ -125,34 +135,37 @@ export const processQuery = async (
     
   } catch (error) {
     console.error("Processing error:", error);
-    return getFallbackResponse(query);
+    return getFallbackResponse(query, parseInt(age) || 25);
   }
 };
 
 // SIMPLE QUERY CLASSIFICATION
-function classifyQuery(query: string): string {
+function classifyQuery(query: string, age: string): string {
   const lowerQuery = query.toLowerCase().trim();
+  const ageNum = parseInt(age) || 25;
   
   // Medical indicators
-  const medicalWords = ['pain', 'hurt', 'ache', 'fever', 'bleed', 'period', 'headache', 'stomach', 'vomit', 'dizzy', 'sick', 'ill', 'symptom'];
+  const medicalWords = ['pain', 'hurt', 'ache', 'fever', 'bleed', 'period', 'headache', 'sick', 'ill', 'symptom'];
   if (medicalWords.some(word => lowerQuery.includes(word))) return "MEDICAL";
   
   // Emotional indicators
-  const emotionalWords = ['sad', 'happy', 'angry', 'stressed', 'anxious', 'depressed', 'lonely', 'love', 'crush', 'relationship', 'breakup'];
+  const emotionalWords = ['sad', 'happy', 'angry', 'stress', 'anxious', 'love', 'crush', 'relationship', 'breakup'];
   if (emotionalWords.some(word => lowerQuery.includes(word))) return "EMOTIONAL";
   
-  // Sexual/body curiosity indicators (careful handling)
-  const bodyWords = ['horny', 'arous', 'masturbat', 'sexual', 'intimacy', 'body', 'touch', 'feel', 'curious', 'private'];
-  if (bodyWords.some(word => lowerQuery.includes(word))) return "BODY_CURIOSITY";
+  // Body curiosity (careful)
+  const bodyWords = ['horny', 'arous', 'sexual', 'body', 'touch', 'private'];
+  if (bodyWords.some(word => lowerQuery.includes(word))) {
+    return ageNum < 18 ? "EXPRESSION_YOUNG" : "BODY_CURIOSITY";
+  }
   
   // Casual expression
-  if (lowerQuery.length < 20 && !lowerQuery.includes('?')) return "EXPRESSION";
+  if (lowerQuery.length < 30 && !lowerQuery.includes('?')) return "EXPRESSION";
   
   return "GENERAL";
 }
 
-// UI MESSAGES BASED ON QUERY TYPE
-function getUIMessages(queryType: string, age: string): string[] {
+// UI MESSAGES
+function getUIMessages(queryType: string, age: number): string[] {
   const baseMessages = ["This is your private space.", "You're in control here."];
   
   switch(queryType) {
@@ -162,45 +175,81 @@ function getUIMessages(queryType: string, age: string): string[] {
       return [...baseMessages, "Your feelings matter."];
     case "BODY_CURIOSITY":
       return age < 18 
-        ? [...baseMessages, "It's okay to be curious.", "Talk to trusted adults about body questions."]
-        : [...baseMessages, "Your body, your journey.", "Always prioritize safety and consent."];
+        ? [...baseMessages, "Talk to trusted adults."]
+        : [...baseMessages, "Your body, your journey."];
+    case "EXPRESSION_YOUNG":
+      return [...baseMessages, "You can talk to trusted adults."];
     default:
       return baseMessages;
   }
 }
 
-async function validateResponse(rawText: string) {
+// RESPONSE VALIDATION
+function validateResponse(rawText: string): HerCareResponse {
   try {
     const parsed = JSON.parse(rawText);
     
+    // Ensure conversation is a string and not empty
+    let conversation = parsed.conversation || "Thank you for sharing. I'm here to listen.";
+    
+    // Clean up common issues
+    if (conversation.includes('```json')) {
+      conversation = conversation.replace(/```json|```/g, '').trim();
+    }
+    
     return {
-      conversation: parsed.conversation || "Thank you for sharing. I'm here to listen.",
+      conversation: conversation.substring(0, 500), // Limit length
       show_doctor_choice: Boolean(parsed.show_doctor_choice),
-      recommended_action: parsed.recommended_action || "Take a moment for yourself"
+      recommended_action: parsed.recommended_action?.substring(0, 30) || "Take a moment"
     };
   } catch (e) {
     console.error("JSON parse error:", e);
-    return getFallbackResponse("");
+    return getFallbackResponse("", 25);
   }
 }
 
-function getFallbackResponse(query: string) {
-  // Smarter fallback based on query
+// FALLBACK RESPONSES
+function getFallbackResponse(query: string, age: number): HerCareResponse {
   const lowerQuery = query.toLowerCase();
   
-  if (lowerQuery.includes("horny") || lowerQuery.includes("arous")) {
+  // Specific fallbacks for common cases
+  if (lowerQuery.includes("horny")) {
     return {
-      conversation: "It's completely normal to have these feelings. Remember to respect yourself and make choices that feel safe and right for you.",
+      conversation: "These feelings are normal. Remember to respect yourself and make choices that feel safe and right for you.",
       show_doctor_choice: false,
       recommended_action: "Be gentle with yourself",
-      uiMessages: ["This is your private space.", "Your feelings are valid."]
+      uiMessages: ["This is your private space.", "Your feelings are valid."],
+      queryType: "EXPRESSION"
     };
   }
   
+  if (lowerQuery.includes("pain") || lowerQuery.includes("hurt")) {
+    return {
+      conversation: "I hear you're experiencing discomfort. If it's severe or worrying, consider checking with a healthcare provider.",
+      show_doctor_choice: true,
+      recommended_action: "Rest and observe",
+      uiMessages: ["Listen to your body.", "You're in control here."],
+      queryType: "MEDICAL"
+    };
+  }
+  
+  // General fallback
   return {
-    conversation: "Thank you for sharing that. Sometimes the first step is just putting it into words.",
+    conversation: "Thank you for sharing that with me. I'm here to listen and support you.",
     show_doctor_choice: false,
     recommended_action: "Take a deep breath",
-    uiMessages: ["You're in control here.", "This conversation is private."]
+    uiMessages: ["You're in control here.", "This conversation is private."],
+    queryType: "GENERAL"
   };
 }
+
+// SIMPLE VERSION FOR DEMO/QUICK TEST
+export const quickResponse = async (query: string): Promise<HerCareResponse> => {
+  return processHerCareQuery({
+    nickname: "Friend",
+    age: "25",
+    location: "India",
+    query: query,
+    language: "English"
+  });
+};
