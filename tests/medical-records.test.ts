@@ -330,4 +330,57 @@ it("rejects unsupported file types before storage", async () => {
     expect(mocks.remove).toHaveBeenCalledTimes(1);
   });
 
+  it("successfully uploads a valid PDF and saves its metadata", async () => {
+    mocks.getServerSession.mockResolvedValue({
+      user: { id: "test-user" },
+    });
+
+    mocks.upload.mockResolvedValue({
+      data: { path: "test-user/test-file.pdf" },
+      error: null,
+    });
+
+    mocks.single.mockResolvedValue({
+      data: {
+        id: "record-123",
+        file_name: "test-report.pdf",
+        category: "other",
+        content_type: "application/pdf",
+        file_size: 23,
+        created_at: "2026-10-23T00:00:00.000Z",
+      },
+      error: null,
+    });
+
+    const formData = new FormData();
+
+    formData.append(
+      "file",
+      new Blob(["%PDF-1.4\nTest document"], {
+        type: "application/pdf",
+      }),
+      "test-report.pdf"
+    );
+
+    const request = new Request(
+      "http://localhost/api/medical-records",
+      {
+        method: "POST",
+        body: formData,
+      }
+    );
+
+    const response = await uploadRecord(request);
+    const body = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(body.record.id).toBe("record-123");
+    expect(mocks.upload).toHaveBeenCalledTimes(1);
+    expect(mocks.logMedicalRecordAction).toHaveBeenCalledWith(
+      "test-user",
+      "upload",
+      "record-123"
+    );
+  });
+
 });
