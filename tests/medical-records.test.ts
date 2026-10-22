@@ -6,6 +6,10 @@ const mocks = vi.hoisted(() => ({
   eq: vi.fn(),
   maybeSingle: vi.fn(),
   createSignedUrl: vi.fn(),
+  upload: vi.fn(),
+  insert: vi.fn(),
+  single: vi.fn(),
+  remove: vi.fn(),
   logMedicalRecordAction: vi.fn(),
 }));
 
@@ -24,11 +28,17 @@ vi.mock("@/lib/medicalRecordAudit", () => ({
 vi.mock("@/lib/supabaseAdmin", () => ({
   supabaseAdmin: {
     from: vi.fn(() => ({
-      select: mocks.select,
+       select: mocks.select,
+       insert: mocks.insert,
+       delete: vi.fn(() => ({
+       eq: vi.fn().mockResolvedValue({ error: null }),
+     })),
     })),
     storage: {
       from: vi.fn(() => ({
         createSignedUrl: mocks.createSignedUrl,
+        upload: mocks.upload,
+        remove: mocks.remove,
       })),
     },
   },
@@ -62,6 +72,28 @@ describe("Medical records API security", () => {
       data: { signedUrl: "https://example.invalid/signed-test-url" },
       error: null,
     });
+
+      mocks.insert.mockReturnValue({
+    select: vi.fn(() => ({
+      single: mocks.single,
+   })),
+  });
+
+    mocks.single.mockResolvedValue({
+      data: { id: "record-123" },
+      error: null,
+   });
+
+    mocks.upload.mockResolvedValue({
+       data: { path: "test-path" },
+       error: null,
+  });
+
+    mocks.remove.mockResolvedValue({
+       data: [],
+       error: null,
+   });
+    
 
     mocks.logMedicalRecordAction.mockResolvedValue(undefined);
   });
@@ -205,6 +237,97 @@ it("rejects unsupported file types before storage", async () => {
       "error",
       "File must be between 1 byte and 10 MB."
     );
+  });
+
+  it("returns an error when storage upload fails", async () => {
+    mocks.getServerSession.mockResolvedValue({
+      user: { id: "test-user" },
+    });
+
+    mocks.upload.mockResolvedValue({
+      data: null,
+      error: { message: "Storage unavailable" },
+    });
+
+    const formData = new FormData();
+
+    formData.append(
+      "file",
+      new Blob(["%PDF-1.4\nTest document"], {
+        type: "application/pdf",
+      }),
+      "test-report.pdf"
+    );
+
+    const request = new Request(
+      "http://localhost/api/medical-records",
+      {
+        method: "POST",
+        body: formData,
+      }
+    );
+
+    const response = await uploadRecord(request);
+
+    expect(response.status).toBe(502);
+
+    await expect(response.json()).resolves.toHaveProperty(
+      "error",
+      "Unable to store the document."
+    );
+
+    expect(mocks.upload).toHaveBeenCalledTimes(1);
+  });
+
+  it("removes the uploaded file when saving its database record fails", async () => {
+    mocks.getServerSession.mockResolvedValue({
+      user: { id: "test-user" },
+    });
+
+    mocks.upload.mockResolvedValue({
+      data: { path: "test-path" },
+      error: null,
+    });
+
+    mocks.single.mockResolvedValue({
+      data: null,
+      error: { message: "Database unavailable" },
+    });
+
+    mocks.remove.mockResolvedValue({
+      data: [],
+      error: null,
+    });
+
+    const formData = new FormData();
+
+    formData.append(
+      "file",
+      new Blob(["%PDF-1.4\nTest document"], {
+        type: "application/pdf",
+      }),
+      "test-report.pdf"
+    );
+
+    const request = new Request(
+      "http://localhost/api/medical-records",
+      {
+        method: "POST",
+        body: formData,
+      }
+    );
+
+    const response = await uploadRecord(request);
+
+    expect(response.status).toBe(502);
+
+    await expect(response.json()).resolves.toHaveProperty(
+      "error",
+      "Unable to save document details."
+    );
+
+    expect(mocks.upload).toHaveBeenCalledTimes(1);
+    expect(mocks.remove).toHaveBeenCalledTimes(1);
   });
 
 });
