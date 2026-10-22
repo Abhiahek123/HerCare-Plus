@@ -113,4 +113,98 @@ describe("Medical records API security", () => {
     expect(response.status).toBe(404);
     expect(mocks.createSignedUrl).not.toHaveBeenCalled();
   });
+
+it("rejects unsupported file types before storage", async () => {
+    mocks.getServerSession.mockResolvedValue({
+      user: { id: "test-user" },
+    });
+
+    const formData = new FormData();
+    formData.append(
+      "file",
+      new Blob(["test content"], {
+        type: "application/x-msdownload",
+      }),
+      "unsafe.exe"
+    );
+
+    const request = new Request(
+      "http://localhost/api/medical-records",
+      {
+        method: "POST",
+        body: formData,
+      }
+    );
+
+    const response = await uploadRecord(request);
+
+    expect(response.status).toBe(415);
+    await expect(response.json()).resolves.toHaveProperty(
+      "error",
+      "Only PDF, JPEG and PNG files are allowed."
+    );
+  });
+
+  it("rejects a PDF whose contents do not match its declared type", async () => {
+    mocks.getServerSession.mockResolvedValue({
+      user: { id: "test-user" },
+    });
+
+    const formData = new FormData();
+    formData.append(
+      "file",
+      new Blob(["this is not a PDF"], {
+        type: "application/pdf",
+      }),
+      "fake.pdf"
+    );
+
+    const request = new Request(
+      "http://localhost/api/medical-records",
+      {
+        method: "POST",
+        body: formData,
+      }
+    );
+
+    const response = await uploadRecord(request);
+
+    expect(response.status).toBe(415);
+    await expect(response.json()).resolves.toHaveProperty(
+      "error",
+      "The file contents do not match the file type."
+    );
+  });
+
+  it("rejects files larger than 10 MB before storage", async () => {
+    mocks.getServerSession.mockResolvedValue({
+      user: { id: "test-user" },
+    });
+
+    const oversizedBytes = new Uint8Array(10 * 1024 * 1024 + 1);
+    const formData = new FormData();
+
+    formData.append(
+      "file",
+      new Blob([oversizedBytes], { type: "application/pdf" }),
+      "large.pdf"
+    );
+
+    const request = new Request(
+      "http://localhost/api/medical-records",
+      {
+        method: "POST",
+        body: formData,
+      }
+    );
+
+    const response = await uploadRecord(request);
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toHaveProperty(
+      "error",
+      "File must be between 1 byte and 10 MB."
+    );
+  });
+
 });
