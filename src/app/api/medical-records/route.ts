@@ -114,13 +114,18 @@ export async function POST(request: Request) {
     const { data, error: databaseError } = await supabaseAdmin
       .from("medical_records")
       .insert({
-        owner_id: ownerId,
-        file_name: file.name.replace(/[\\/\u0000-\u001f]/g, "_").slice(0, 200),
-        storage_path: storagePath,
-        category,
-        content_type: file.type,
-        file_size: file.size,
-      })
+          owner_id: ownerId,
+          file_name: file.name.replace(/[\\/\u0000-\u001f]/g, "_").slice(0, 200),
+          storage_path: storagePath,
+          category,
+          content_type: file.type,
+          file_size: file.size,
+          version_number: 1,
+          retention_until: new Date(
+             Date.now() + 7 * 365 * 24 * 60 * 60 * 1000
+          ).toISOString(),
+          previous_version_id: null,
+        })
       .select("id, file_name, category, content_type, file_size, created_at")
       .single();
 
@@ -168,8 +173,8 @@ export async function GET() {
     const { data, error } = await supabaseAdmin
       .from("medical_records")
       .select(
-        "id, file_name, category, content_type, file_size, created_at"
-      )
+           "id, file_name, category, content_type, file_size, created_at, version_number, previous_version_id"
+          )
       .eq("owner_id", ownerId)
       .order("created_at", { ascending: false })
       .limit(100);

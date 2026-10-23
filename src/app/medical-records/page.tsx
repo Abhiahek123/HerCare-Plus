@@ -9,6 +9,8 @@ type MedicalRecord = {
   content_type: string;
   file_size: number;
   created_at: string;
+  version_number?: number;
+  previous_version_id?: string | null;
 };
 
 const categories = [
@@ -29,6 +31,14 @@ export default function MedicalRecordsPage() {
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
+  const [versionTarget, setVersionTarget] =
+  useState<MedicalRecord | null>(null);
+  const [versionFile, setVersionFile] = useState<File | null>(null);
+  const [versionUploading, setVersionUploading] = useState(false);
+  const [historyTarget, setHistoryTarget] =
+  useState<MedicalRecord | null>(null);
+  const [history, setHistory] = useState<MedicalRecord[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 
   async function loadRecords() {
@@ -199,6 +209,100 @@ export default function MedicalRecordsPage() {
       setBusyId(null);
     }
   }
+
+   async function uploadNewVersion(
+  event: React.FormEvent<HTMLFormElement>
+) {
+  event.preventDefault();
+
+  if (!versionTarget || !versionFile) {
+    setError("Select a document before uploading a new version.");
+    return;
+  }
+
+  if (versionFile.size > 10 * 1024 * 1024) {
+    setError("The file must be 10 MB or smaller.");
+    return;
+  }
+
+  setVersionUploading(true);
+  setError("");
+  setMessage("");
+
+  try {
+    const formData = new FormData();
+    formData.append("file", versionFile);
+    formData.append("id", versionTarget.id);
+    formData.append("category", versionTarget.category || "other");
+
+    const response = await fetch("/api/medical-records/versions", {
+      method: "POST",
+      body: formData,
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        result.error || "Could not upload the new version."
+      );
+    }
+
+    setMessage("New document version uploaded successfully.");
+    setVersionTarget(null);
+    setVersionFile(null);
+    await loadRecords();
+  } catch (err) {
+    setError(
+      err instanceof Error
+        ? err.message
+        : "Could not upload the new version."
+    );
+  } finally {
+    setVersionUploading(false);
+  }
+}
+
+async function viewVersionHistory(record: MedicalRecord) {
+  setHistoryTarget(record);
+  setHistory([]);
+  setHistoryLoading(true);
+  setError("");
+  setMessage("");
+
+  try {
+    const response = await fetch(
+      `/api/medical-records/versions?id=${encodeURIComponent(record.id)}`,
+      { cache: "no-store" }
+    );
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        result.error || "Could not load version history."
+      );
+    }
+
+    const versions = Array.isArray(result)
+      ? result
+      : result.versions ?? result.records;
+
+    if (!Array.isArray(versions)) {
+      throw new Error("Unexpected version-history response.");
+    }
+
+    setHistory(versions);
+  } catch (err) {
+    setError(
+      err instanceof Error
+        ? err.message
+        : "Could not load version history."
+    );
+  } finally {
+    setHistoryLoading(false);
+  }
+}
 
   function formatSize(bytes: number) {
     if (bytes < 1024) return `${bytes} B`;
@@ -429,7 +533,124 @@ export default function MedicalRecordsPage() {
   >
     Delete
   </button>
+   <button
+  type="button"
+  onClick={() => {
+    setVersionTarget(record);
+    setVersionFile(null);
+    setError("");
+    setMessage("");
+  }}
+  style={buttonStyle}
+>
+  Upload New Version
+</button>
+
+<button
+  type="button"
+  onClick={() => void viewVersionHistory(record)}
+  style={buttonStyle}
+>
+  View Version History
+</button>
 </div>
+
+   {versionTarget?.id === record.id && (
+  <form
+    onSubmit={uploadNewVersion}
+    style={{
+      marginTop: 16,
+      padding: 16,
+      background: "#f5f7fa",
+      borderRadius: 8,
+    }}
+  >
+    <h4>Upload a new version</h4>
+
+    <p style={{ fontSize: 14, color: "#596579" }}>
+      Choose the updated PDF, JPEG, or PNG file (maximum 10 MB).
+    </p>
+
+    <input
+      type="file"
+      accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+      required
+      onChange={(event) =>
+        setVersionFile(event.target.files?.[0] ?? null)
+      }
+      style={{ display: "block", marginBottom: 12 }}
+    />
+
+    <button type="submit" disabled={versionUploading} style={buttonStyle}>
+      {versionUploading ? "Uploading..." : "Save New Version"}
+    </button>
+
+    <button
+      type="button"
+      onClick={() => {
+        setVersionTarget(null);
+        setVersionFile(null);
+      }}
+      style={{ ...buttonStyle, marginLeft: 8 }}
+    >
+      Cancel
+    </button>
+  </form>
+)}
+
+{historyTarget?.id === record.id && (
+  <div
+    style={{
+      marginTop: 16,
+      padding: 16,
+      background: "#f5f7fa",
+      borderRadius: 8,
+    }}
+  >
+    <h4>Version History</h4>
+
+    {historyLoading ? (
+      <p>Loading version history...</p>
+    ) : history.length === 0 ? (
+      <p>No version history was returned.</p>
+    ) : (
+      <ol>
+        {history.map((version) => (
+          <li key={version.id} style={{ marginBottom: 10 }}>
+            <strong>
+              Version {version.version_number ?? 1}: {version.file_name}
+            </strong>
+            <br />
+            <span style={{ fontSize: 13, color: "#596579" }}>
+              {new Date(version.created_at).toLocaleString()} ·{" "}
+              {formatSize(Number(version.file_size))}
+            </span>
+            <br />
+            <button
+              type="button"
+              onClick={() => void downloadDocument(version)}
+              disabled={busyId === version.id}
+              style={{ ...buttonStyle, marginTop: 6 }}
+            >
+              Download this version
+            </button>
+          </li>
+        ))}
+      </ol>
+    )}
+
+    <button
+      type="button"
+      onClick={() => {
+        setHistoryTarget(null);
+        setHistory([]);
+      }}
+      style={buttonStyle}
+    >
+      Close History
+    </button>
+  </div>
+)}
               </article>
             ))}
           </div>

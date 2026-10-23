@@ -4,7 +4,6 @@ import { authOptions } from "@/lib/authOptions";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { logMedicalRecordAction } from "@/lib/medicalRecordAudit";
 
-
 export const runtime = "nodejs";
 
 export async function DELETE(request: Request) {
@@ -30,7 +29,6 @@ export async function DELETE(request: Request) {
       );
     }
 
-    // Confirm ownership before deleting anything from storage.
     const { data: record, error: lookupError } = await supabaseAdmin
       .from("medical_records")
       .select("id, owner_id, storage_path")
@@ -49,6 +47,33 @@ export async function DELETE(request: Request) {
       return NextResponse.json(
         { error: "Document not found." },
         { status: 404 }
+      );
+    }
+
+    // Do not delete a version that another version depends on.
+    const { data: newerVersion, error: versionError } =
+      await supabaseAdmin
+        .from("medical_records")
+        .select("id")
+        .eq("owner_id", ownerId)
+        .eq("previous_version_id", record.id)
+        .limit(1)
+        .maybeSingle();
+
+    if (versionError) {
+      return NextResponse.json(
+        { error: "Unable to verify document version history." },
+        { status: 502 }
+      );
+    }
+
+    if (newerVersion) {
+      return NextResponse.json(
+        {
+          error:
+            "This document has a newer version. Delete the latest version first to preserve version history.",
+        },
+        { status: 409 }
       );
     }
 
