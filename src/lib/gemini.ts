@@ -3,21 +3,22 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 // ==============================
 // INIT
 // ==============================
-const genAI = new GoogleGenerativeAI(
-  process.env.GEMINI_API_KEY || "AIzaSyBTp-Ilhqfry5pSqOTvpeIPUEElCM2f8GM"
-);
+const apiKey = process.env.GEMINI_API_KEY;
+
+if (!apiKey) {
+  throw new Error("GEMINI_API_KEY is not configured.");
+}
+
+const genAI = new GoogleGenerativeAI(apiKey);
 
 // ==============================
 // MODEL (TEXT ONLY, DIRECT ANSWERS)
 // ==============================
 export const model = genAI.getGenerativeModel({
-  model: "gemma-3-12b",
+  model: "gemini-3.6-flash",
   generationConfig: {
-    temperature: 0.6,
-    topP: 0.9,
-    topK: 40,
-    maxOutputTokens: 600,
-  }
+    maxOutputTokens: 1000,
+  },
 });
 
 // ==============================

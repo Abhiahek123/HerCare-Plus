@@ -131,25 +131,49 @@ export async function POST(req: Request) {
     // --- UNIFIED HIGH-SPEED AGENT ---
     try {
       const prompt = unifiedPrompt(cleanNickname, cleanAge, cleanLocation, cleanSymptoms, cleanLanguage);
-      const result = await model.generateContent(prompt);
+      let result: Awaited<ReturnType<typeof model.generateContent>> | undefined;
+
+for (let attempt = 0; attempt < 3; attempt++) {
+  try {
+    result = await model.generateContent(prompt);
+    break;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const retryable =
+  /\b(429|500|503|504)\b/.test(message) ||
+  /fetch failed|network|timeout|ECONNRESET|ETIMEDOUT/i.test(message);
+
+    if (!retryable || attempt === 2) {
+      throw error;
+    }
+
+    const delayMs = 1000 * 2 ** attempt;
+    console.warn(`Gemini retrying after ${delayMs}ms`);
+    await new Promise(resolve => setTimeout(resolve, delayMs));
+  }
+}
+
+if (!result) {
+  throw new Error("Gemini request failed after retries.");
+}
       let responseText = result.response.text();
       
       // Clean JSON (in case model outputs Markdown code blocks)
       responseText = responseText.replace(/```json/g, "").replace(/```/g, "").trim();
       
-      let data;
-      try {
-        data = JSON.parse(responseText);
-      } catch (e) {
-        console.warn("JSON Parse Failed, using raw text", e);
-        // Fallback if AI returns plain text instead of JSON
-        data = { 
-            conversation: responseText.slice(0, 300), // Safety clip
-            show_doctor_choice: true, 
-            recommended_action: "Consult Doctor" 
-        };
-      }
+  let data;
 
+try {
+  data = JSON.parse(responseText);
+} catch (e) {
+  console.warn("Gemini returned plain text instead of JSON. Using raw text.");
+
+  data = {
+    conversation: responseText,
+    show_doctor_choice: true,
+    recommended_action: "Consult Doctor",
+  };
+}
       return NextResponse.json({
         conversation: data.conversation,
         show_doctor_choice: data.show_doctor_choice,
