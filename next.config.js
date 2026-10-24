@@ -7,7 +7,11 @@ const withPWA = require('next-pwa')({
 });
 
 const nextConfig = {
-   // Other Next.js config
+  // Do not fail the production build on lint issues (the lint setup in this
+  // repo targets a newer ESLint than the one pinned in package.json).
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
 };
 
 module.exports = withPWA(nextConfig);
